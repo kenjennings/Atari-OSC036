@@ -1,2 +1,4 @@
 # Atari-OSC036
-Port of OldSchoolCoders Tutorial 36 for Atari
+Atari port of OldSchoolCoders C64 Tutorial 36
+
+---

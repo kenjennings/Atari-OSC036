@@ -1,0 +1,44 @@
+1 REM A Text Scroller.  Very Simple.
+2 REM Just print a subset of a string.
+3 REM 
+4 REM Atari strings can be very large 
+5 REM more like C char arrays.
+6 DIM A$(1000)
+7 REM Concatonating Atari strings is different.
+10 REM A$="this was a film from oldskoolcoder (c) jun 2019. "
+12 A$(LEN(A$)+1)="This was a film from OldSkoolCoder (c) Jun 2019. "
+20 REM A$ = A$ + "github : https://github.com/oldskoolcoder/ "
+22 A$(LEN(A$)+1)="github : https://github.com/oldskoolcoder/ "
+40 REM A$ = A$ + "twitter : @oldskoolcoder email : oldskoolcoder@outlook.com "
+42 A$(LEN(A$)+1)="twitter : @oldskoolcoder email : oldskoolcoder@outlook.com "
+50 REM A$ = A$ + "please support me on patreon @ https://www.patreon.com/"
+52 A$(LEN(A$)+1)="Please support me on Patreon @ https://www.patreon.com/"
+60 REM A$ = A$ + "oldskoolcoder thank you ;-)"
+62 A$(LEN(A$)+1)="OldSkoolCoder thank you ;-)"
+70 A$(LEN(A$)+1)="                    Atari parody by Ken Jennings, Jan 2020. "
+75 A$(LEN(A$)+1)="github : https://github.com/kenjennings/Atari-OSC036 "
+79 REM 40 blanks at the end make a cleaner looking exit.
+82 A$(LEN(A$)+1)="                                        "
+99 REM 
+100 REM print "{clear}"
+102 REM PRINT CHR$(125): REM Atari Clear Screen
+104 REM But, this is better to turn off cursor 
+106 REM and clear the screen...
+108 POKE 82,0:GRAPHICS 0:POKE 752,1
+110 REM for i = 1 to len(A$)
+112 FOR I=1 TO LEN(A$)
+118 REM Poking characters is too slow in BASIC
+119 REM so OldSkoolCoder deleted these lines...
+120 REM rem for sl = 1025 to 1063
+130 REM rem poke sl-1, peek(sl)
+140 REM rem next sl
+145 REM print "{home}{right}{delete}";
+147 POSITION 0,0:PRINT CHR$(254);:REM DELETE CHAR AT POSITION
+150 REM print "{home}{right*39}"; mid$(A$,i,1);
+152 PRINT CHR$(30);A$(I,I);:REM MOVE RIGHT OFF THE LEFT EDGE AND WRAP AROUND
+155 REM for de = 1 to 100 : next
+156 REM Loops are not good timing methods.
+157 POKE 20,0
+158 IF PEEK(20)=0 THEN GOTO 158
+160 REM next i
+162 NEXT I

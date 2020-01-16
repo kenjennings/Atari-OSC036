@@ -1,6 +1,8 @@
 # Atari-OSC036
 Atari port of OldSchoolCoders C64 Tutorial 36
 
+OldSkoolCoder's Github:  https://github.com/OldSkoolCoder/TEXTScrollers
+
 ---
 
 **Episode 1** - BASIC program that scrolls the top line of the display.  Of course, this is coarse scrolling a character at a time.

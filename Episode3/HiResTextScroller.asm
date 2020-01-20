@@ -33,6 +33,13 @@
 	icl "macros.asm"
 
 ;===============================================================================
+; Memory - Page 0.
+; Declaring one variable here to use for a loop counter 
+; rather than using A.
+
+zbCounter = $D4 ; = FR0, floating point register not used in this program.
+
+;===============================================================================
 ; Following is N/A for Atari.  Auto start is done by the executable file 
 ; setting an address in the DOS_RUN_ADDR at load time.  See end of source.
 
@@ -53,7 +60,7 @@
 
 ;; ChrArea =$3200       ; User Defined Character Area
 ; Moving this for Atari, since we started waaaay up in memory.
-ChrArea = CHARACTERSET  ; User Defined Character Area declared later
+; Also, just let the assembler supply the value later.
 
 ;; ChrRom  =$D000       ; ChrSet Rom Area
 ; Atari has this elsewhere...
@@ -61,20 +68,23 @@ ChrRom  = $E000          ; ChrSet Rom Area
 
 
 ; 40 character mapping table (for MADS changed BYTE to .byte) 
-; Actually, 42 entries here, because of start and end.
-ChrAreaLo
-	.byte $00,$08,$10,$18,$20,$28,$30,$38,$40,$48
-	.byte $50,$58,$60,$68,$70,$78,$80,$88,$90,$98
-	.byte $A0,$A8,$B0,$B8,$C0,$C8,$D0,$D8,$E0,$E8
-	.byte $F0,$F8,$00,$08,$10,$18,$20,$28,$30,$38
-	.byte $40,$48
+; Actually, 42 entries here, because of ??? The code could use only 41.
+; Actually (again), this table lookup is not even needed.
+; The code references this data in one place, and it is always 
+; done when the index is 40.  
+;;ChrAreaLo
+;;	.byte $00,$08,$10,$18,$20,$28,$30,$38,$40,$48
+;;	.byte $50,$58,$60,$68,$70,$78,$80,$88,$90,$98
+;;	.byte $A0,$A8,$B0,$B8,$C0,$C8,$D0,$D8,$E0,$E8
+;;	.byte $F0,$F8,$00,$08,$10,$18,$20,$28,$30,$38
+;;	.byte $40,$48
 
-ChrAreaHi
-	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
-	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
-	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
-	.byte >ChrArea,>ChrArea,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1
-	.byte >ChrArea+1,>ChrArea+1
+;;ChrAreaHi
+;;	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
+;;	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
+;;	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
+;;	.byte >ChrArea,>ChrArea,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1
+;;	.byte >ChrArea+1,>ChrArea+1
 
 ; Text to Scroll
 ; This data to put in the scroller has been moved into the screen RAM declaration 
@@ -99,7 +109,8 @@ StartScroller ; This is where Atari will automatically jump when the program loa
 ; 42 characters * 8 = 336 bytes, so 2 pages.
 InitCharacterArea
 	ldy #0
-	lda #0
+;;	lda #0
+	tya
 ;;@Inner
 b_ICA_InnerLoop
 	sta ChrArea,y       ; Set First Bank
@@ -111,7 +122,7 @@ b_ICA_InnerLoop
 ;	bne @Inner
 	bne b_ICA_InnerLoop
 
-    rts
+	rts
 
 
 ;===============================================================================
@@ -134,7 +145,6 @@ InitScreen
 ;;	tya
 ;;	ora #64         ; Add 64 to Character
 ;;	sta $0400,y     ; C64 fixed address for screen.    SCREENRAM = $0400
-;;	sta SCREENRAM,y ; Wherever the assembler put the screen ram.
 ;;	iny
 ;;	cpy #40         ; 40 Characters in 1 Line
 ;;	bne @looper 
@@ -150,7 +160,7 @@ b_IS_Looper
 ;;	lda #28         ; Set VIC Chip To Right Character Mapping Memory    
 ;;	sta $d018       ;
 
-	lda #>CHARACTERSET ; Tell Atari OS where the new character set is.
+	lda #>ChrArea      ; Tell Atari OS where the new character set is.
 	sta CHBAS          ; = $02F4 ; CHBASE
 	
 	jsr libScreenWaitFrame ; Make sure the display list update below 
@@ -160,8 +170,8 @@ b_IS_Looper
 	lda #>DISPLAYLIST
 	sta SDLSTH
 	
-	lda #<MyDLI        ; DLI to reset the character set to the ROM version 
-	sta VDSLST
+	lda #<MyDLI        ; DLI reset the character set to the ROM version 
+	sta VDSLST         ; to keep the on screen text legible.
 	lda #>MyDLI        
 	sta VDSLST+1
 	
@@ -172,7 +182,7 @@ b_IS_Looper
 
 
 ;===============================================================================	
-; Initialise The Text Scroller Pointers
+;; Initialise The Text Scroller Pointers
 ; Unused code
 ;; InitTextScroller
 ;;    ldy #<TEXTToScroll
@@ -182,75 +192,96 @@ b_IS_Looper
 	
 ;;    rts
 
-	
+
 ;===============================================================================
-; Grab the Character Definition From CHR Rom
-GrabCharacter
-    ; Register Y has Character Code to Copy
-    lda #0
-    sta CharacterLoc + 1
-    sta CharacterLoc + 2
-    tya
-    asl                     ; x2
-    rol CharacterLoc + 2
-    asl                     ; x4
-    rol CharacterLoc + 2
-    asl                     ; x8
-    rol CharacterLoc + 2
-    sta CharacterLoc + 1
-    clc
-;;  lda #$D0
-	lda #$E0                 ; Atari's ROM set is in a different place.
-    adc CharacterLoc + 2
-    sta CharacterLoc + 2
-; Atari does not need the bank switching bit twiddling.
-;;  sei                     ; disable interrupts while we copy
-;;  lda #$33                ; make the CPU see the Character Generator ROM...
-;;  sta $01                 ; ...at $D000 by storing %00110011 into location $01
-    ldy #$00                
-;;GCLoop
-b_GC_Loop
-CharacterLoc
-;;  lda $D000,y
-	lda ChrRom,y             ; Atari's ROM set is in a different place.  $E000
-;;  sta CHARACTERSET+$3340,y            ; write to the RAM Character 40
-    sta CHARACTERSET+$140,y             ; write to the RAM Character 40 
-    iny
-    cpy #8
-;;	bne GCLoop              ; ..for low byte $00 to $FF
-	bne b_GC_Loop           ; ..for low byte $00 to $FF
-; Atari does not need the back switching bit twiddling.
-;;  lda #$37                ; switch in I/O mapped registers again...
-;;  sta $01                 ; ... with %00110111 so CPU can see them
-;;  cli                     ; turn off interrupt disable flag
-
-    rts
-
-
-;===============================================================================	
-; Get the Next Character in the Message
+;; Get the Next Character in the Message
 GetCharacterInMessage
-TextLoader
-	lda TEXTToScroll
+TextLoader  ; <- Self-modifying code changes the address used below.
+	lda TEXTToScroll     ; Get byte from the input data
 	pha                     ; Save for later.
 	; -1 should be the end of string sentinel.  
 	; No other character has the high bit set.
 	; therefore, the CMP is not necessary.  Use negative flag.
 ;;	cmp #255
 ;;  beq @EndOfText
-	bmi b_GCIM_EndOfText
+	; On further consideration, this branch is not actually needed, 
+	; because the PLA at the end will set the negative flag 
+	; according to the $FF end of data byte. 
+;	bmi b_GCIM_EndOfText
 
-	clc
-	lda TextLoader + 1
+	clc                ; Increment the address pointing to the 
+	lda TextLoader + 1 ; input buffer of text  to scroll.
 	adc #1
 	sta TextLoader + 1
 	lda TextLoader + 2
 	adc #0
 	sta TextLoader + 2
 ;;@EndOfText
-b_GCIM_EndOfText
-	pla                     ; Get the text byte back.
+;b_GCIM_EndOfText
+	pla                ; Get the text byte back.  A = next character
 	
+	rts
+
+	
+;===============================================================================
+; Grab the Character definition from ROM and copy to the 
+; 40th character position in the scrolling buffer (which is the 
+; character set in RAM).
+GrabCharacter
+	; Register Y has Character Code to Copy
+	lda #0                  ; Zero the pointer to the ROM character.
+	sta CharacterLoc + 1
+	sta CharacterLoc + 2
+	
+	tya                     ; A = Y = character code
+	
+	asl                     ; x2
+	rol CharacterLoc + 2
+	asl                     ; x4
+	rol CharacterLoc + 2
+	asl                     ; x8
+	rol CharacterLoc + 2
+	sta CharacterLoc + 1
+	clc                     ; Next add base address of ROM character set.
+;;  lda #$D0
+	lda #>ChrRom            ; Atari's ROM set is in a different place. $E000
+	adc CharacterLoc + 2
+	sta CharacterLoc + 2
+; Atari does not need the bank switching bit twiddling.
+;;  sei                     ; disable interrupts while we copy
+;;  lda #$33                ; make the CPU see the Character Generator ROM...
+;;  sta $01                 ; ...at $D000 by storing %00110011 into location $01
+
+	; Copy 8 bytes from the ROM character set to the RAM character set.
+	
+;;    ldy #$00   
+;;GCLoop
+;;CharacterLoc
+;;    lda $D000,y             
+;;    sta $3340,y             ; write to the RAM Charcter 40
+;;    iny
+;;    cpy #8
+;;    bne GCLoop              ; ..for low byte $00 to $FF
+;;    lda #$37                ; switch in I/O mapped registers again...
+;;    sta $01                 ; ... with %00110111 so CPU can see them
+;;    cli                     ; turn off interrupt disable flag
+;;    rts
+	
+	; Copy the 8 bytes in reverse and eliminate the CMP.
+	
+	ldy #$07  
+b_GC_Loop
+CharacterLoc ; <- Self-modifying code changes the address used below.
+	lda ChrRom,y             ; Atari's ROM set is in a different place.  $E000
+	sta ChrArea+$140,y       ; write to the RAM Character + 40  (40 * 8 = 320)
+	dey
+	bpl b_GC_Loop            ; 7 to 0 positive, then FF is negative.
+	
+; Atari does not need the back switching bit twiddling.
+;;  lda #$37                ; switch in I/O mapped registers again...
+;;  sta $01                 ; ... with %00110111 so CPU can see them
+;;  cli                     ; turn off interrupt disable flag
+
 	rts
 
 
@@ -259,93 +290,117 @@ b_GCIM_EndOfText
 ; For the Atari the code waits until just after the display passes the scrolling
 ; line and then it starts. 
 TextScroller
-
-    jsr GetCharacterInMessage
-	; -1 should be the end of string sentinel.  
-	; No other character has the high bit set.
-	; therefore, the CMP is not necessary.  Use negative flag.
+	jsr GetCharacterInMessage ; A = next character to add
+	; -1 should be the end of string sentinel and no other character  
+	; character has the high bit set.  Therefore, the CMP is not 
+	; necessary.  Use negative flag.
 ;;	cmp #255
 ;;	bne @StillGoing
 	bpl b_TS_StillGoing
 	
-	jsr TestOff ; Restore colors when the work is over.
+;	jsr TestOff ; Restore hardware colors when the work is over.
 	
 	rts
 
 ;;@StillGoing
 b_TS_StillGoing	
-	tay
-	jsr GrabCharacter
-	lda #0
+	tay               ; Y = A = next character.
+	jsr GrabCharacter ; Load ROM image into RAM at position 40 (per Y)
 
-	jsr WaitForScanLineStart
-	jsr TestOn ; Set colors to indicate when the work starts.
+;;	lda #0    ; Start work with A = 0
+; Use a page 0 variable to eliminate the math on the Accumulator 
+; and an explicit comparison.  Also, no need to save A state, either.
+	lda #7
+	sta zbCounter
 	
 ;;@DoNextPixel
 b_TS_DoNextPixel
-	pha                    
+;;	pha                    ; Save A counter value for later.
 	jsr ScrollOverOnePixel
+
+	jsr WaitForScanLineStart; start work AFTER the scrolling line.
+;	jsr TestOn ; Set new hardware colors to indicate when the work starts.
 
 ;;@loop
 ;;	lda #200               ; Scanline -> A
 ;;	cmp $D012              ; Compare A to current raster line
 ;;	bne @loop              ; Loop if raster line not reached 255
 
-	pla
-	clc
-	adc #1
-	cmp #8
+;;	pla                    ; Get working A value
+;;	clc
+;;	adc #1                 ; increment.
+;;	cmp #8                 ; Has it counted 8 pixels?
+	dec zbCounter          ; Decrement.  Has it counted 8 pixels.
 ;;	bne @DoNextPixel
-	bne b_TS_DoNextPixel
+;	bne b_TS_DoNextPixel   ; No.  Let's shift  again.
+	bpl b_TS_DoNextPixel   ; No.  Let's shift  again.
 	
-	jsr TestOff ; Restore colors when the work is over.
+;	jsr TestOff ; Restore hardware colors when the work is over.
 	
 	jmp TextScroller
 
 
 ;===============================================================================
 ScrollOverOnePixel
-	ldy #40
-	lda ChrAreaLo,y
-	sta ChrByteLoc + 1
-	lda ChrAreaHi,y
+	ldy #40                 ; Y = 40th char, the buffered end of scrolling line.
+	
+;;	lda ChrAreaLo,y         ; get address of character image in RAM
+;;	sta ChrByteLoc + 1      ; and self-modify code below.
+;;	lda ChrAreaHi,y
+;;	sta ChrByteLoc + 2
+
+	; The table lookup is not needed.  This is always started with 
+	; the index value 40.  So, just insert values directly...
+	lda #<[ChrArea+$140]    ; get address of character image in RAM
+	sta ChrByteLoc + 1      ; and self-modify the code below.
+	lda #>[ChrArea+$140]
 	sta ChrByteLoc + 2
-	lda #0
+
+	lda #0                  ; A = 0 = stack of carry bits to roll in.
 	clc
+	
 ;; RotateTheNextCharacter
 b_SOOP_RotateTheNextCharacter
-	ldx #0
+;;	ldx #0                  ; X = 0
+; Work in reverse from 7 to 0 removes the need for CMP
+	ldx #7
 
+; The following is the guts.   This eventually loops 320 times 
+; to shift the character set image by one bit.	
 ;; Rotatethe8Bytes
 b_SOOP_Rotatethe8Bytes
-	pha
-	rol
-ChrByteLoc
-	rol ChrByteLoc,x
-	pla
-	rol
-	inx
-	cpx #8
+	pha                     ; Save current carry bits in A now.
+	rol                     ; A << Roll bits Left. (high bit out into carry)
+ChrByteLoc ; <- Self-modifying code changes the address used below.
+	rol ChrByteLoc,x        ; Roll a byte of character image, insert carry from A
+	pla                     ; get the carry bit collection for A again.
+	rol                     ; A<< Roll bits left, dump top bit, insert new carry bit.
+;;	inx                     ; next value for loop
+	dex                     ; next value for loop
+;;	cpx #8                  ; Have we done 8 bytes?
 ;;	bne Rotatethe8Bytes
-	bne b_SOOP_Rotatethe8Bytes
+;	bne b_SOOP_Rotatethe8Bytes ; No, loop for the remaining bytes of the character.
+	bpl b_SOOP_Rotatethe8Bytes ; No, loop for the remaining bytes of the character.
 
-    ; Accumulator now contains the vertical pixel pattern
-    ; now to apply to previous 8 bytes
-	pha
-	sec
-	lda ChrByteLoc + 1
+	; Accumulator now contains the vertical pixel pattern from the previous 
+	; 8 bytes to apply to the next character in the RAM character set.
+	pha                     ; Save the new stack of rolled carry bits.
+
+	sec                     ; Subtract 8 from the pointer to the character 
+	lda ChrByteLoc + 1      ; image in RAM and self-modify above.
 	sbc #8
 	sta ChrByteLoc + 1
 	lda ChrByteLoc + 2
 	sbc #0
 	sta ChrByteLoc + 2
-	pla
-	dey
+
+	pla                      ; Retrieve the stack of carry bits.
+	dey                      ; Y = Y - 1
 ;;	cpy #255
 ;;	bne RotateTheNextCharacter
-	bmi b_SOOP_RotateTheNextCharacter
+	bpl b_SOOP_RotateTheNextCharacter ; When Y rolls from 0 to -1, then stop.
 	
-    rts
+	rts
 
 ;==============================================================================
 ;														           TESTON  A  
@@ -468,9 +523,9 @@ bLoopWaitFrame
 
 MyDLI
 	pha           
-	lda #$E0
-	sta WSYNC  ; = $D40A ; Wait for Horizontal Sync
-	sta CHBASE ; = $D409 ; Character Set Base Address (high)
+	lda #>ChrRom ; = $E0000 
+	sta WSYNC    ; = $D40A ; Wait for Horizontal Sync
+	sta CHBASE   ; = $D409 ; Character Set Base Address (high)
 	pla
 	rti
 	
@@ -480,8 +535,8 @@ MyDLI
 	
 	.align $0400
 
-CHARACTERSET
-;	.ds $0400  Since an ORG immediately follows this, nothing needs to be here.
+ChrArea  ; == CHARACTER SET == someplace in RAM.
+;	.ds $0400 ; Since an ORG immediately follows this, nothing needs to be here.
 
 
 ;===============================================================================
@@ -523,13 +578,13 @@ TEXTToScroll
 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 10
 	.sb "Atari parody by Ken Jennings, Jan 2020. " ; line 11
 	.sb "github:https://github.com/kenjennings/At" ; line 12
-	.sb "ari-OSC036/                            !" ; line 13
+	.sb "ari-OSC036/                  The End...!" ; line 13
 	
 	; Adding 40 blanks to scroll the text off before restarting,
 	; which also doubles as an empty line for the screen memory.
 SCREENEMPTY ; 40 blank characters.  Line 2, 14 - 25 on screen.
 	.sb "                                        " ; Line 2, 14, etc.
-    .by 255  ; -1 does work as end of string flag for Atari and C64. (will not be displayed)	
+	.by 255  ; -1 does work as end of string flag for Atari and C64. (will not be displayed)	
 
 EXPLAINTHIS
 	.sb "The green part of the screen shows when " ; line 15
@@ -544,7 +599,7 @@ EXPLAINTHIS
 	
 ;===============================================================================
 	.align $0100 ; Go to next page boundary to make sure display list 
-	             ; doesn't cross the 1K boundary.
+	             ; can't cross a 1K boundary.
 
 DISPLAYLIST
 	.by DL_BLANK_8   ; extra 8 blank to center 25 text lines

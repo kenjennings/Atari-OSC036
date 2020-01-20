@@ -1644,630 +1644,685 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/macros.asm
    368
     34
     35 				;===============================================================================
-    36 				; Following is N/A for Atari.  Auto start is done by the executable file 
-    37 				; setting an address in the DOS_RUN_ADDR at load time.  See end of source.
-    38
-    39 				;; 10 SYS (2064)
-    40
-    41 				;; *=$0801
-    42
-    43 				;;    BYTE    $0E, $08, $0A, $00, $9E, $20, $28,  $32, $30, $36, $34, $29, $00, $00, $00
-    44
-    45 				;; *=$0810
-    46
-    47 				;;	jmp StartScroller
-    48
-    49 				;===============================================================================
-    50 				; LOMEM_DOS_DUP = $3308 ; First usable memory after DOS and DUP 
+    36 				; Memory - Page 0.
+    37 				; Declaring one variable here to use for a loop counter 
+    38 				; rather than using A.
+    39
+    40 = 00D4			zbCounter = $D4 ; = FR0, floating point register not used in this program.
+    41
+    42 				;===============================================================================
+    43 				; Following is N/A for Atari.  Auto start is done by the executable file 
+    44 				; setting an address in the DOS_RUN_ADDR at load time.  See end of source.
+    45
+    46 				;; 10 SYS (2064)
+    47
+    48 				;; *=$0801
+    49
+    50 				;;    BYTE    $0E, $08, $0A, $00, $9E, $20, $28,  $32, $30, $36, $34, $29, $00, $00, $00
     51
-    52 					ORG LOMEM_DOS_DUP ; Overdoing the niceness.  Start "program" after DOS and DUP 
+    52 				;; *=$0810
     53
-    54 				;; ChrArea =$3200       ; User Defined Character Area
-    55 				; Moving this for Atari, since we started waaaay up in memory.
-    56 = 3800			ChrArea = CHARACTERSET  ; User Defined Character Area declared later
-    57
-    58 				;; ChrRom  =$D000       ; ChrSet Rom Area
-    59 				; Atari has this elsewhere...
-    60 = E000			ChrRom  = $E000          ; ChrSet Rom Area
-    61
-    62
-    63 				; 40 character mapping table (for MADS changed BYTE to .byte) 
-    64 				; Actually, 42 entries here, because of start and end.
-    65 				ChrAreaLo
-    66 FFFF> 3308-348A> 00 08 + 	.byte $00,$08,$10,$18,$20,$28,$30,$38,$40,$48
-    67 3312 50 58 60 68 70 78 + 	.byte $50,$58,$60,$68,$70,$78,$80,$88,$90,$98
-    68 331C A0 A8 B0 B8 C0 C8 + 	.byte $A0,$A8,$B0,$B8,$C0,$C8,$D0,$D8,$E0,$E8
-    69 3326 F0 F8 00 08 10 18 + 	.byte $F0,$F8,$00,$08,$10,$18,$20,$28,$30,$38
-    70 3330 40 48			.byte $40,$48
-    71
-    72 3332			ChrAreaHi
-    73 3332 38 38 38 38 38 38 + 	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
-    74 333C 38 38 38 38 38 38 + 	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
-    75 3346 38 38 38 38 38 38 + 	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
-    76 3350 38 38 39 39 39 39 + 	.byte >ChrArea,>ChrArea,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1
-    77 335A 39 39			.byte >ChrArea+1,>ChrArea+1
-    78
-    79 				; Text to Scroll
-    80 				; This data to put in the scroller has been moved into the screen RAM declaration 
-    81 				; so the data can be re-used as the static text shown on screen. 
-    82
-    83
-    84 				;===============================================================================
-    85 				; Main Routine
-    86 				;===============================================================================
-    87 335C			StartScroller ; This is where Atari will automatically jump when the program loads.
-    88 335C 20 66 33			jsr InitCharacterArea
-    89 335F 20 74 33			jsr InitScreen
-    90 				;;	jsr InitTextScroller
-    91 3362 20 E7 33			jsr TextScroller
-    92 					
-    93 3365 60				rts ; bye.
-    94
-    95
+    54 				;;	jmp StartScroller
+    55
+    56 				;===============================================================================
+    57 				; LOMEM_DOS_DUP = $3308 ; First usable memory after DOS and DUP 
+    58
+    59 					ORG LOMEM_DOS_DUP ; Overdoing the niceness.  Start "program" after DOS and DUP 
+    60
+    61 				;; ChrArea =$3200       ; User Defined Character Area
+    62 				; Moving this for Atari, since we started waaaay up in memory.
+    63 				; Also, just let the assembler supply the value later.
+    64
+    65 				;; ChrRom  =$D000       ; ChrSet Rom Area
+    66 				; Atari has this elsewhere...
+    67 = E000			ChrRom  = $E000          ; ChrSet Rom Area
+    68
+    69
+    70 				; 40 character mapping table (for MADS changed BYTE to .byte) 
+    71 				; Actually, 42 entries here, because of ??? The code could use only 41.
+    72 				; Actually (again), this table lookup is not even needed.
+    73 				; The code references this data in one place, and it is always 
+    74 				; done when the index is 40.  
+    75 				;;ChrAreaLo
+    76 				;;	.byte $00,$08,$10,$18,$20,$28,$30,$38,$40,$48
+    77 				;;	.byte $50,$58,$60,$68,$70,$78,$80,$88,$90,$98
+    78 				;;	.byte $A0,$A8,$B0,$B8,$C0,$C8,$D0,$D8,$E0,$E8
+    79 				;;	.byte $F0,$F8,$00,$08,$10,$18,$20,$28,$30,$38
+    80 				;;	.byte $40,$48
+    81
+    82 				;;ChrAreaHi
+    83 				;;	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
+    84 				;;	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
+    85 				;;	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
+    86 				;;	.byte >ChrArea,>ChrArea,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1
+    87 				;;	.byte >ChrArea+1,>ChrArea+1
+    88
+    89 				; Text to Scroll
+    90 				; This data to put in the scroller has been moved into the screen RAM declaration 
+    91 				; so the data can be re-used as the static text shown on screen. 
+    92
+    93
+    94 				;===============================================================================
+    95 				; Main Routine
     96 				;===============================================================================
-    97 				; Initialize the User Defined Character Area
-    98 				; Zeroing only the first two pages.
-    99 				; 42 characters * 8 = 336 bytes, so 2 pages.
-   100 3366			InitCharacterArea
-   101 3366 A0 00			ldy #0
-   102 3368 A9 00			lda #0
-   103 				;;@Inner
-   104 336A			b_ICA_InnerLoop
-   105 336A 99 00 38			sta ChrArea,y       ; Set First Bank
-   106 336D 99 00 39			sta ChrArea+$100,y  ; Set Second Bank
-   107 3370 C8				iny
-   108 				; Roll over from $FF to $00 will automatically set Z flag, 
-   109 				; so cpy #0 is not needed.
-   110 				;;	cpy #0             
-   111 				;	bne @Inner
-   112 3371 D0 F7			bne b_ICA_InnerLoop
-   113
-   114 3373 60			    rts
-   115
-   116
-   117 				;===============================================================================
-   118 				; Initialise the Screen.  
-   119 				; Screen clear not needed for Atari, since we are building the screen to suit.
-   120 				; Also, since internal screen byte codes are used for the data, there's no 
-   121 				; need to add 64 to the byte values.
-   122 				; In fact, because the value 0 used for all blank spaces only appears once, 
-   123 				; it is safe to use that as target scroll characters in the character set.
-   124 				; This is made safe, because a DLI on the scrolling line resets the CHBAS
-   125 				; hardware register to the OS character set in ROM, so the static text on 
-   126 				; screen is always readable.
+    97 				StartScroller ; This is where Atari will automatically jump when the program loads.
+    98 FFFF> 3308-3421> 20 12 + 	jsr InitCharacterArea
+    99 330B 20 1F 33			jsr InitScreen
+   100 				;;	jsr InitTextScroller
+   101 330E 20 8E 33			jsr TextScroller
+   102 					
+   103 3311 60				rts ; bye.
+   104
+   105
+   106 				;===============================================================================
+   107 				; Initialize the User Defined Character Area
+   108 				; Zeroing only the first two pages.
+   109 				; 42 characters * 8 = 336 bytes, so 2 pages.
+   110 3312			InitCharacterArea
+   111 3312 A0 00			ldy #0
+   112 				;;	lda #0
+   113 3314 98				tya
+   114 				;;@Inner
+   115 3315			b_ICA_InnerLoop
+   116 3315 99 00 38			sta ChrArea,y       ; Set First Bank
+   117 3318 99 00 39			sta ChrArea+$100,y  ; Set Second Bank
+   118 331B C8				iny
+   119 				; Roll over from $FF to $00 will automatically set Z flag, 
+   120 				; so cpy #0 is not needed.
+   121 				;;	cpy #0             
+   122 				;	bne @Inner
+   123 331C D0 F7			bne b_ICA_InnerLoop
+   124
+   125 331E 60				rts
+   126
    127
-   128 3374			InitScreen
-   129 				;;    lda #$93    ; Clear Screen
-   130 				;;    jsr $FFD2   ; Output Character
-   131
-   132 				;;	ldy #0
-   133 				;;@Looper
-   134 				;;	tya
-   135 				;;	ora #64         ; Add 64 to Character
-   136 				;;	sta $0400,y     ; C64 fixed address for screen.    SCREENRAM = $0400
-   137 				;;	sta SCREENRAM,y ; Wherever the assembler put the screen ram.
-   138 				;;	iny
-   139 				;;	cpy #40         ; 40 Characters in 1 Line
-   140 				;;	bne @looper 
-   141
-   142 					; Reverse counting does not require a CMP
-   143 3374 A0 27			ldy #39         ; 39 to 0 is 40 bytes.
-   144 3376			b_IS_Looper
-   145 3376 98				tya
-   146 3377 99 00 40			sta SCREENRAM,y ; Wherever the assembler put the screen ram below.
-   147 337A 88				dey
-   148 337B 10 F9			bpl b_IS_Looper ; Loop while positive.  At -1/$FF/255 it falls through.
-   149 					
-   150 				;;	lda #28         ; Set VIC Chip To Right Character Mapping Memory    
-   151 				;;	sta $d018       ;
-   152
-   153 337D A9 38			lda #>CHARACTERSET ; Tell Atari OS where the new character set is.
-   154 337F 8D F4 02			sta CHBAS          ; = $02F4 ; CHBASE
-   155 					
-   156 3382 20 77 34			jsr libScreenWaitFrame ; Make sure the display list update below 
-   157 					                       ; cannot be interrupted by the vertical blank.
-   158 3385 A9 00			lda #<DISPLAYLIST  ; Tell the system where the new display list is.
-   159 3387 8D 30 02			sta SDLSTL
-   160 338A A9 43			lda #>DISPLAYLIST
-   161 338C 8D 31 02			sta SDLSTH
-   162 					
-   163 338F A9 80			lda #<MyDLI        ; DLI to reset the character set to the ROM version 
-   164 3391 8D 00 02			sta VDSLST
-   165 3394 A9 34			lda #>MyDLI        
-   166 3396 8D 01 02			sta VDSLST+1
-   167 					
-   168 3399 A9 C0			lda #[NMI_DLI|NMI_VBI]     ; Turn On DLIs
-   169 339B 8D 0E D4			sta NMIEN
-   170 					
-   171 339E 60				rts
-   172
-   173
-   174 				;===============================================================================	
-   175 				; Initialise The Text Scroller Pointers
-   176 				; Unused code
-   177 				;; InitTextScroller
-   178 				;;    ldy #<TEXTToScroll
-   179 				;;    sty TextLoader + 1
-   180 				;;    ldy #>TEXTToScroll
-   181 				;;    sty TextLoader + 2
-   182 					
-   183 				;;    rts
-   184
-   185 					
-   186 				;===============================================================================
-   187 				; Grab the Character Definition From CHR Rom
-   188 339F			GrabCharacter
-   189 				    ; Register Y has Character Code to Copy
-   190 339F A9 00		    lda #0
-   191 33A1 8D C3 33		    sta CharacterLoc + 1
-   192 33A4 8D C4 33		    sta CharacterLoc + 2
-   193 33A7 98			    tya
-   194 33A8 0A			    asl                     ; x2
-   195 33A9 2E C4 33		    rol CharacterLoc + 2
-   196 33AC 0A			    asl                     ; x4
-   197 33AD 2E C4 33		    rol CharacterLoc + 2
-   198 33B0 0A			    asl                     ; x8
-   199 33B1 2E C4 33		    rol CharacterLoc + 2
-   200 33B4 8D C3 33		    sta CharacterLoc + 1
-   201 33B7 18			    clc
-   202 				;;  lda #$D0
-   203 33B8 A9 E0			lda #$E0                 ; Atari's ROM set is in a different place.
-   204 33BA 6D C4 33		    adc CharacterLoc + 2
-   205 33BD 8D C4 33		    sta CharacterLoc + 2
-   206 				; Atari does not need the bank switching bit twiddling.
-   207 				;;  sei                     ; disable interrupts while we copy
-   208 				;;  lda #$33                ; make the CPU see the Character Generator ROM...
-   209 				;;  sta $01                 ; ...at $D000 by storing %00110011 into location $01
-   210 33C0 A0 00		    ldy #$00                
-   211 				;;GCLoop
-   212 33C2			b_GC_Loop
-   213 33C2			CharacterLoc
-   214 				;;  lda $D000,y
-   215 33C2 B9 00 E0			lda ChrRom,y             ; Atari's ROM set is in a different place.  $E000
-   216 				;;  sta CHARACTERSET+$3340,y            ; write to the RAM Character 40
-   217 33C5 99 40 39		    sta CHARACTERSET+$140,y             ; write to the RAM Character 40 
-   218 33C8 C8			    iny
-   219 33C9 C0 08		    cpy #8
-   220 				;;	bne GCLoop              ; ..for low byte $00 to $FF
-   221 33CB D0 F5			bne b_GC_Loop           ; ..for low byte $00 to $FF
-   222 				; Atari does not need the back switching bit twiddling.
-   223 				;;  lda #$37                ; switch in I/O mapped registers again...
-   224 				;;  sta $01                 ; ... with %00110111 so CPU can see them
-   225 				;;  cli                     ; turn off interrupt disable flag
-   226
-   227 33CD 60			    rts
-   228
-   229
-   230 				;===============================================================================	
-   231 				; Get the Next Character in the Message
-   232 33CE			GetCharacterInMessage
-   233 33CE			TextLoader
-   234 33CE AD 28 40			lda TEXTToScroll
-   235 33D1 48				pha                     ; Save for later.
-   236 					; -1 should be the end of string sentinel.  
-   237 					; No other character has the high bit set.
-   238 					; therefore, the CMP is not necessary.  Use negative flag.
-   239 				;;	cmp #255
-   240 				;;  beq @EndOfText
-   241 33D2 30 11			bmi b_GCIM_EndOfText
-   242
-   243 33D4 18				clc
-   244 33D5 AD CF 33			lda TextLoader + 1
-   245 33D8 69 01			adc #1
-   246 33DA 8D CF 33			sta TextLoader + 1
-   247 33DD AD D0 33			lda TextLoader + 2
-   248 33E0 69 00			adc #0
-   249 33E2 8D D0 33			sta TextLoader + 2
-   250 				;;@EndOfText
-   251 33E5			b_GCIM_EndOfText
-   252 33E5 68				pla                     ; Get the text byte back.
-   253 					
-   254 33E6 60				rts
-   255
-   256
-   257 				;===============================================================================
-   258 				; The Main Text Smooth Scrolling Routine  
-   259 				; For the Atari the code waits until just after the display passes the scrolling
-   260 				; line and then it starts. 
-   261 33E7			TextScroller
-   262
-   263 33E7 20 CE 33		    jsr GetCharacterInMessage
-   264 					; -1 should be the end of string sentinel.  
-   265 					; No other character has the high bit set.
-   266 					; therefore, the CMP is not necessary.  Use negative flag.
-   267 				;;	cmp #255
-   268 				;;	bne @StillGoing
-   269 33EA 10 04			bpl b_TS_StillGoing
-   270 					
-   271 33EC 20 54 34			jsr TestOff ; Restore colors when the work is over.
-   272 					
-   273 33EF 60				rts
-   274
-   275 				;;@StillGoing
-   276 33F0			b_TS_StillGoing	
-   277 33F0 A8				tay
-   278 33F1 20 9F 33			jsr GrabCharacter
-   279 33F4 A9 00			lda #0
-   280
-   281 33F6 20 69 34			jsr WaitForScanLineStart
-   282 33F9 20 44 34			jsr TestOn ; Set colors to indicate when the work starts.
-   283 					
-   284 				;;@DoNextPixel
-   285 33FC			b_TS_DoNextPixel
-   286 33FC 48				pha                    
-   287 33FD 20 0E 34			jsr ScrollOverOnePixel
-   288
-   289 				;;@loop
-   290 				;;	lda #200               ; Scanline -> A
-   291 				;;	cmp $D012              ; Compare A to current raster line
-   292 				;;	bne @loop              ; Loop if raster line not reached 255
-   293
-   294 3400 68				pla
-   295 3401 18				clc
-   296 3402 69 01			adc #1
-   297 3404 C9 08			cmp #8
-   298 				;;	bne @DoNextPixel
-   299 3406 D0 F4			bne b_TS_DoNextPixel
+   128 				;===============================================================================
+   129 				; Initialise the Screen.  
+   130 				; Screen clear not needed for Atari, since we are building the screen to suit.
+   131 				; Also, since internal screen byte codes are used for the data, there's no 
+   132 				; need to add 64 to the byte values.
+   133 				; In fact, because the value 0 used for all blank spaces only appears once, 
+   134 				; it is safe to use that as target scroll characters in the character set.
+   135 				; This is made safe, because a DLI on the scrolling line resets the CHBAS
+   136 				; hardware register to the OS character set in ROM, so the static text on 
+   137 				; screen is always readable.
+   138
+   139 331F			InitScreen
+   140 				;;    lda #$93    ; Clear Screen
+   141 				;;    jsr $FFD2   ; Output Character
+   142
+   143 				;;	ldy #0
+   144 				;;@Looper
+   145 				;;	tya
+   146 				;;	ora #64         ; Add 64 to Character
+   147 				;;	sta $0400,y     ; C64 fixed address for screen.    SCREENRAM = $0400
+   148 				;;	iny
+   149 				;;	cpy #40         ; 40 Characters in 1 Line
+   150 				;;	bne @looper 
+   151
+   152 					; Reverse counting does not require a CMP
+   153 331F A0 27			ldy #39         ; 39 to 0 is 40 bytes.
+   154 3321			b_IS_Looper
+   155 3321 98				tya
+   156 3322 99 00 40			sta SCREENRAM,y ; Wherever the assembler put the screen ram below.
+   157 3325 88				dey
+   158 3326 10 F9			bpl b_IS_Looper ; Loop while positive.  At -1/$FF/255 it falls through.
+   159 					
+   160 				;;	lda #28         ; Set VIC Chip To Right Character Mapping Memory    
+   161 				;;	sta $d018       ;
+   162
+   163 3328 A9 38			lda #>ChrArea      ; Tell Atari OS where the new character set is.
+   164 332A 8D F4 02			sta CHBAS          ; = $02F4 ; CHBASE
+   165 					
+   166 332D 20 0E 34			jsr libScreenWaitFrame ; Make sure the display list update below 
+   167 					                       ; cannot be interrupted by the vertical blank.
+   168 3330 A9 00			lda #<DISPLAYLIST  ; Tell the system where the new display list is.
+   169 3332 8D 30 02			sta SDLSTL
+   170 3335 A9 43			lda #>DISPLAYLIST
+   171 3337 8D 31 02			sta SDLSTH
+   172 					
+   173 333A A9 17			lda #<MyDLI        ; DLI reset the character set to the ROM version 
+   174 333C 8D 00 02			sta VDSLST         ; to keep the on screen text legible.
+   175 333F A9 34			lda #>MyDLI        
+   176 3341 8D 01 02			sta VDSLST+1
+   177 					
+   178 3344 A9 C0			lda #[NMI_DLI|NMI_VBI]     ; Turn On DLIs
+   179 3346 8D 0E D4			sta NMIEN
+   180 					
+   181 3349 60				rts
+   182
+   183
+   184 				;===============================================================================	
+   185 				;; Initialise The Text Scroller Pointers
+   186 				; Unused code
+   187 				;; InitTextScroller
+   188 				;;    ldy #<TEXTToScroll
+   189 				;;    sty TextLoader + 1
+   190 				;;    ldy #>TEXTToScroll
+   191 				;;    sty TextLoader + 2
+   192 					
+   193 				;;    rts
+   194
+   195
+   196 				;===============================================================================
+   197 				;; Get the Next Character in the Message
+   198 334A			GetCharacterInMessage
+   199 334A			TextLoader  ; <- Self-modifying code changes the address used below.
+   200 334A AD 28 40			lda TEXTToScroll     ; Get byte from the input data
+   201 334D 48				pha                     ; Save for later.
+   202 					; -1 should be the end of string sentinel.  
+   203 					; No other character has the high bit set.
+   204 					; therefore, the CMP is not necessary.  Use negative flag.
+   205 				;;	cmp #255
+   206 				;;  beq @EndOfText
+   207 					; On further consideration, this branch is not actually needed, 
+   208 					; because the PLA at the end will set the negative flag 
+   209 					; according to the $FF end of data byte. 
+   210 				;	bmi b_GCIM_EndOfText
+   211
+   212 334E 18				clc                ; Increment the address pointing to the 
+   213 334F AD 4B 33			lda TextLoader + 1 ; input buffer of text  to scroll.
+   214 3352 69 01			adc #1
+   215 3354 8D 4B 33			sta TextLoader + 1
+   216 3357 AD 4C 33			lda TextLoader + 2
+   217 335A 69 00			adc #0
+   218 335C 8D 4C 33			sta TextLoader + 2
+   219 				;;@EndOfText
+   220 				;b_GCIM_EndOfText
+   221 335F 68				pla                ; Get the text byte back.  A = next character
+   222 					
+   223 3360 60				rts
+   224
+   225 					
+   226 				;===============================================================================
+   227 				; Grab the Character definition from ROM and copy to the 
+   228 				; 40th character position in the scrolling buffer (which is the 
+   229 				; character set in RAM).
+   230 3361			GrabCharacter
+   231 					; Register Y has Character Code to Copy
+   232 3361 A9 00			lda #0                  ; Zero the pointer to the ROM character.
+   233 3363 8D 85 33			sta CharacterLoc + 1
+   234 3366 8D 86 33			sta CharacterLoc + 2
+   235 					
+   236 3369 98				tya                     ; A = Y = character code
+   237 					
+   238 336A 0A				asl                     ; x2
+   239 336B 2E 86 33			rol CharacterLoc + 2
+   240 336E 0A				asl                     ; x4
+   241 336F 2E 86 33			rol CharacterLoc + 2
+   242 3372 0A				asl                     ; x8
+   243 3373 2E 86 33			rol CharacterLoc + 2
+   244 3376 8D 85 33			sta CharacterLoc + 1
+   245 3379 18				clc                     ; Next add base address of ROM character set.
+   246 				;;  lda #$D0
+   247 337A A9 E0			lda #>ChrRom            ; Atari's ROM set is in a different place. $E000
+   248 337C 6D 86 33			adc CharacterLoc + 2
+   249 337F 8D 86 33			sta CharacterLoc + 2
+   250 				; Atari does not need the bank switching bit twiddling.
+   251 				;;  sei                     ; disable interrupts while we copy
+   252 				;;  lda #$33                ; make the CPU see the Character Generator ROM...
+   253 				;;  sta $01                 ; ...at $D000 by storing %00110011 into location $01
+   254
+   255 					; Copy 8 bytes from the ROM character set to the RAM character set.
+   256 					
+   257 				;;    ldy #$00   
+   258 				;;GCLoop
+   259 				;;CharacterLoc
+   260 				;;    lda $D000,y             
+   261 				;;    sta $3340,y             ; write to the RAM Charcter 40
+   262 				;;    iny
+   263 				;;    cpy #8
+   264 				;;    bne GCLoop              ; ..for low byte $00 to $FF
+   265 				;;    lda #$37                ; switch in I/O mapped registers again...
+   266 				;;    sta $01                 ; ... with %00110111 so CPU can see them
+   267 				;;    cli                     ; turn off interrupt disable flag
+   268 				;;    rts
+   269 					
+   270 					; Copy the 8 bytes in reverse and eliminate the CMP.
+   271 					
+   272 3382 A0 07			ldy #$07  
+   273 3384			b_GC_Loop
+   274 3384			CharacterLoc ; <- Self-modifying code changes the address used below.
+   275 3384 B9 00 E0			lda ChrRom,y             ; Atari's ROM set is in a different place.  $E000
+   276 3387 99 40 39			sta ChrArea+$140,y       ; write to the RAM Character + 40  (40 * 8 = 320)
+   277 338A 88				dey
+   278 338B 10 F7			bpl b_GC_Loop            ; 7 to 0 positive, then FF is negative.
+   279 					
+   280 				; Atari does not need the back switching bit twiddling.
+   281 				;;  lda #$37                ; switch in I/O mapped registers again...
+   282 				;;  sta $01                 ; ... with %00110111 so CPU can see them
+   283 				;;  cli                     ; turn off interrupt disable flag
+   284
+   285 338D 60				rts
+   286
+   287
+   288 				;===============================================================================
+   289 				; The Main Text Smooth Scrolling Routine  
+   290 				; For the Atari the code waits until just after the display passes the scrolling
+   291 				; line and then it starts. 
+   292 338E			TextScroller
+   293 338E 20 4A 33			jsr GetCharacterInMessage ; A = next character to add
+   294 					; -1 should be the end of string sentinel and no other character  
+   295 					; character has the high bit set.  Therefore, the CMP is not 
+   296 					; necessary.  Use negative flag.
+   297 				;;	cmp #255
+   298 				;;	bne @StillGoing
+   299 3391 10 01			bpl b_TS_StillGoing
    300 					
-   301 3408 20 54 34			jsr TestOff ; Restore colors when the work is over.
+   301 				;	jsr TestOff ; Restore hardware colors when the work is over.
    302 					
-   303 340B 4C E7 33			jmp TextScroller
+   303 3393 60				rts
    304
-   305
-   306 				;===============================================================================
-   307 340E			ScrollOverOnePixel
-   308 340E A0 28			ldy #40
-   309 3410 B9 08 33			lda ChrAreaLo,y
-   310 3413 8D 24 34			sta ChrByteLoc + 1
-   311 3416 B9 32 33			lda ChrAreaHi,y
-   312 3419 8D 25 34			sta ChrByteLoc + 2
-   313 341C A9 00			lda #0
-   314 341E 18				clc
-   315 				;; RotateTheNextCharacter
-   316 341F			b_SOOP_RotateTheNextCharacter
-   317 341F A2 00			ldx #0
-   318
-   319 				;; Rotatethe8Bytes
-   320 3421			b_SOOP_Rotatethe8Bytes
-   321 3421 48				pha
-   322 3422 2A				rol
-   323 3423			ChrByteLoc
-   324 3423 3E 23 34			rol ChrByteLoc,x
-   325 3426 68				pla
-   326 3427 2A				rol
-   327 3428 E8				inx
-   328 3429 E0 08			cpx #8
-   329 				;;	bne Rotatethe8Bytes
-   330 342B D0 F4			bne b_SOOP_Rotatethe8Bytes
-   331
-   332 				    ; Accumulator now contains the vertical pixel pattern
-   333 				    ; now to apply to previous 8 bytes
-   334 342D 48				pha
-   335 342E 38				sec
-   336 342F AD 24 34			lda ChrByteLoc + 1
-   337 3432 E9 08			sbc #8
-   338 3434 8D 24 34			sta ChrByteLoc + 1
-   339 3437 AD 25 34			lda ChrByteLoc + 2
-   340 343A E9 00			sbc #0
-   341 343C 8D 25 34			sta ChrByteLoc + 2
-   342 343F 68				pla
-   343 3440 88				dey
-   344 				;;	cpy #255
-   345 				;;	bne RotateTheNextCharacter
-   346 3441 30 DC			bmi b_SOOP_RotateTheNextCharacter
-   347 					
-   348 3443 60			    rts
-   349
-   350 				;==============================================================================
-   351 				;														           TESTON  A  
-   352 				;==============================================================================
-   353 				; Subroutine to change the hardware color registers to identify where the 
-   354 				; compute time begins.  
-   355 				;
-   356 				; This is expected to be called immediately after pausing for the specific 
-   357 				; scan line AFTER the scrolling line.
-   358 				;
-   359 				; TestOn uses  A .
-   360 				;==============================================================================
-   361
-   362 3444			TestOn
-   363 3444 48				pha           ; save so the caller is not disrupted.
-   364 					
-   365 3445 A9 CC			lda #[COLOR_GREEN+$0C]
-   366 3447 8D 18 D0			sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
-   367 344A 8D 1A D0			sta COLBK  ; = $D01A ; Playfield Background color - The border color
-   368 					
-   369 344D A9 00			lda #COLOR_BLACK
-   370 344F 8D 17 D0			sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
-   371 					
-   372 3452 68				pla ; restore for the caller.
-   373 3453 60				rts
-   374
-   375 					
-   376 				;==============================================================================
-   377 				;														           TESTOFF  A  
-   378 				;==============================================================================
-   379 				; Subroutine to change the hardware color registers back to the values 
-   380 				; in the OS Shadow registers to identify where the compute time ends.  
-   381 				; It does not need to change CHBASE, since at this point text is readable, 
-   382 				; and the next VBI is going to reset CHBASE to the current OS Shadow value 
-   383 				; automatically. 
-   384 				;
-   385 				; TestOff uses  A .
-   386 				;==============================================================================
-   387
-   388 3454			TestOff
-   389 3454 48				pha           ; save so the caller is not disrupted.
-   390 					
-   391 3455 AD C8 02			lda COLOR4 ; = $02C8 ; COLBK  - Playfield Background color (Border for modes 2, 3, and F)
-   392 3458 8D 1A D0			sta COLBK  ; = $D01A ; Playfield Background color - The border color
-   393
-   394 345B AD C6 02			lda COLOR2 ; = $02C6 ; COLPF2 - Playfield 2 color (Background for ANTIC modes 2, 3, and F)
-   395 345E 8D 18 D0			sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
-   396 					
-   397 3461 AD C5 02			lda COLOR1 ; = $02C5 ; COLPF1 - Playfield 1 color (Text for modes 2, 3, pixels for mode F)
-   398 3464 8D 17 D0			sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
-   399 					
-   400 3467 68				pla ; restore for the caller.
-   401 3468 60				rts
-   402
-   403
-   404 				;==============================================================================
-   405 				; Wait for the scan line AFTER the scrolling line.
-   406 				; 
-   407 				; Preserve A to not interfere with caller.
-   408
-   409 3469			WaitForScanLineStart
-   410 3469 48				pha           ; save so the caller is not disrupted.
-   411
-   412 346A A9 14			lda #20
-   413 346C 20 71 34			jsr libScreenWaitScanLine
-   414
-   415 346F 68				pla ; restore for the caller.
-   416 3470 60				rts ; Yes.  We're there.  exit.
-   417
-   418 					
-   419 				;==============================================================================
-   420 				;														SCREENWAITSCANLINE  A  
-   421 				;==============================================================================
-   422 				; Subroutine to wait for ANTIC to reach a specific scanline in the display.
-   423 				;
-   424 				; ScreenWaitScanLine expects  A  to contain the target scanline.
-   425 				;==============================================================================
-   426
-   427 3471			libScreenWaitScanLine
-   428 					
-   429 3471			bLoopWaitScanLine
-   430 3471 CD 0B D4			cmp VCOUNT           ; Does A match the scanline?
-   431 3474 D0 FB			bne bLoopWaitScanLine ; No. Then have not reached the line.
-   432
-   433 3476 60				rts ; Yes.  We're there.  exit.
-   434
-   435 					
-   436 				;==============================================================================
-   437 				;															SCREENWAITFRAME  A  
-   438 				;==============================================================================
-   439 				; Subroutine to wait for the current frame to finish display.
-   440 				; At the end we know the electron beam is at the top of the screen, so there
-   441 				; is reasonable assumption that code immediately following this will not be
-   442 				; interrupted by the VBI.
-   443 				;
-   444 				; ScreenWaitFrame  uses A
-   445 				;==============================================================================
-   446
-   447 3477			libScreenWaitFrame
-   448 3477 48				pha           ; save so the caller is not disrupted.
-   449 3478 A5 14			lda RTCLOK60  ; Read the jiffy clock incremented during vertical blank.
-   450
-   451 347A			bLoopWaitFrame
-   452 347A C5 14			cmp RTCLOK60      ; Is it still the same?
-   453 347C F0 FC			beq bLoopWaitFrame ; Yes.  Then the frame has not ended.
-   454
-   455 347E 68				pla ; restore for the caller.
-   456 347F 60				rts ; No.  Clock changed means frame ended.  exit.
-   457 					
-   458 					
+   305 				;;@StillGoing
+   306 3394			b_TS_StillGoing	
+   307 3394 A8				tay               ; Y = A = next character.
+   308 3395 20 61 33			jsr GrabCharacter ; Load ROM image into RAM at position 40 (per Y)
+   309
+   310 				;;	lda #0    ; Start work with A = 0
+   311 				; Use a page 0 variable to eliminate the math on the Accumulator 
+   312 				; and an explicit comparison.  Also, no need to save A state, either.
+   313 3398 A9 07			lda #7
+   314 339A 85 D4			sta zbCounter
+   315 					
+   316 				;;@DoNextPixel
+   317 339C			b_TS_DoNextPixel
+   318 				;;	pha                    ; Save A counter value for later.
+   319 339C 20 A9 33			jsr ScrollOverOnePixel
+   320
+   321 339F 20 00 34			jsr WaitForScanLineStart; start work AFTER the scrolling line.
+   322 				;	jsr TestOn ; Set new hardware colors to indicate when the work starts.
+   323
+   324 				;;@loop
+   325 				;;	lda #200               ; Scanline -> A
+   326 				;;	cmp $D012              ; Compare A to current raster line
+   327 				;;	bne @loop              ; Loop if raster line not reached 255
+   328
+   329 				;;	pla                    ; Get working A value
+   330 				;;	clc
+   331 				;;	adc #1                 ; increment.
+   332 				;;	cmp #8                 ; Has it counted 8 pixels?
+   333 33A2 C6 D4			dec zbCounter          ; Decrement.  Has it counted 8 pixels.
+   334 				;;	bne @DoNextPixel
+   335 				;	bne b_TS_DoNextPixel   ; No.  Let's shift  again.
+   336 33A4 10 F6			bpl b_TS_DoNextPixel   ; No.  Let's shift  again.
+   337 					
+   338 				;	jsr TestOff ; Restore hardware colors when the work is over.
+   339 					
+   340 33A6 4C 8E 33			jmp TextScroller
+   341
+   342
+   343 				;===============================================================================
+   344 33A9			ScrollOverOnePixel
+   345 33A9 A0 28			ldy #40                 ; Y = 40th char, the buffered end of scrolling line.
+   346 					
+   347 				;;	lda ChrAreaLo,y         ; get address of character image in RAM
+   348 				;;	sta ChrByteLoc + 1      ; and self-modify code below.
+   349 				;;	lda ChrAreaHi,y
+   350 				;;	sta ChrByteLoc + 2
+   351
+   352 					; The table lookup is not needed.  This is always started with 
+   353 					; the index value 40.  So, just insert values directly...
+   354 33AB A9 40			lda #<[ChrArea+$140]    ; get address of character image in RAM
+   355 33AD 8D BD 33			sta ChrByteLoc + 1      ; and self-modify the code below.
+   356 33B0 A9 39			lda #>[ChrArea+$140]
+   357 33B2 8D BE 33			sta ChrByteLoc + 2
+   358
+   359 33B5 A9 00			lda #0                  ; A = 0 = stack of carry bits to roll in.
+   360 33B7 18				clc
+   361 					
+   362 				;; RotateTheNextCharacter
+   363 33B8			b_SOOP_RotateTheNextCharacter
+   364 				;;	ldx #0                  ; X = 0
+   365 				; Work in reverse from 7 to 0 removes the need for CMP
+   366 33B8 A2 07			ldx #7
+   367
+   368 				; The following is the guts.   This eventually loops 320 times 
+   369 				; to shift the character set image by one bit.	
+   370 				;; Rotatethe8Bytes
+   371 33BA			b_SOOP_Rotatethe8Bytes
+   372 33BA 48				pha                     ; Save current carry bits in A now.
+   373 33BB 2A				rol                     ; A << Roll bits Left. (high bit out into carry)
+   374 33BC			ChrByteLoc ; <- Self-modifying code changes the address used below.
+   375 33BC 3E BC 33			rol ChrByteLoc,x        ; Roll a byte of character image, insert carry from A
+   376 33BF 68				pla                     ; get the carry bit collection for A again.
+   377 33C0 2A				rol                     ; A<< Roll bits left, dump top bit, insert new carry bit.
+   378 				;;	inx                     ; next value for loop
+   379 33C1 CA				dex                     ; next value for loop
+   380 				;;	cpx #8                  ; Have we done 8 bytes?
+   381 				;;	bne Rotatethe8Bytes
+   382 				;	bne b_SOOP_Rotatethe8Bytes ; No, loop for the remaining bytes of the character.
+   383 33C2 10 F6			bpl b_SOOP_Rotatethe8Bytes ; No, loop for the remaining bytes of the character.
+   384
+   385 					; Accumulator now contains the vertical pixel pattern from the previous 
+   386 					; 8 bytes to apply to the next character in the RAM character set.
+   387 33C4 48				pha                     ; Save the new stack of rolled carry bits.
+   388
+   389 33C5 38				sec                     ; Subtract 8 from the pointer to the character 
+   390 33C6 AD BD 33			lda ChrByteLoc + 1      ; image in RAM and self-modify above.
+   391 33C9 E9 08			sbc #8
+   392 33CB 8D BD 33			sta ChrByteLoc + 1
+   393 33CE AD BE 33			lda ChrByteLoc + 2
+   394 33D1 E9 00			sbc #0
+   395 33D3 8D BE 33			sta ChrByteLoc + 2
+   396
+   397 33D6 68				pla                      ; Retrieve the stack of carry bits.
+   398 33D7 88				dey                      ; Y = Y - 1
+   399 				;;	cpy #255
+   400 				;;	bne RotateTheNextCharacter
+   401 33D8 10 DE			bpl b_SOOP_RotateTheNextCharacter ; When Y rolls from 0 to -1, then stop.
+   402 					
+   403 33DA 60				rts
+   404
+   405 				;==============================================================================
+   406 				;														           TESTON  A  
+   407 				;==============================================================================
+   408 				; Subroutine to change the hardware color registers to identify where the 
+   409 				; compute time begins.  
+   410 				;
+   411 				; This is expected to be called immediately after pausing for the specific 
+   412 				; scan line AFTER the scrolling line.
+   413 				;
+   414 				; TestOn uses  A .
+   415 				;==============================================================================
+   416
+   417 33DB			TestOn
+   418 33DB 48				pha           ; save so the caller is not disrupted.
+   419 					
+   420 33DC A9 CC			lda #[COLOR_GREEN+$0C]
+   421 33DE 8D 18 D0			sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
+   422 33E1 8D 1A D0			sta COLBK  ; = $D01A ; Playfield Background color - The border color
+   423 					
+   424 33E4 A9 00			lda #COLOR_BLACK
+   425 33E6 8D 17 D0			sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
+   426 					
+   427 33E9 68				pla ; restore for the caller.
+   428 33EA 60				rts
+   429
+   430 					
+   431 				;==============================================================================
+   432 				;														           TESTOFF  A  
+   433 				;==============================================================================
+   434 				; Subroutine to change the hardware color registers back to the values 
+   435 				; in the OS Shadow registers to identify where the compute time ends.  
+   436 				; It does not need to change CHBASE, since at this point text is readable, 
+   437 				; and the next VBI is going to reset CHBASE to the current OS Shadow value 
+   438 				; automatically. 
+   439 				;
+   440 				; TestOff uses  A .
+   441 				;==============================================================================
+   442
+   443 33EB			TestOff
+   444 33EB 48				pha           ; save so the caller is not disrupted.
+   445 					
+   446 33EC AD C8 02			lda COLOR4 ; = $02C8 ; COLBK  - Playfield Background color (Border for modes 2, 3, and F)
+   447 33EF 8D 1A D0			sta COLBK  ; = $D01A ; Playfield Background color - The border color
+   448
+   449 33F2 AD C6 02			lda COLOR2 ; = $02C6 ; COLPF2 - Playfield 2 color (Background for ANTIC modes 2, 3, and F)
+   450 33F5 8D 18 D0			sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
+   451 					
+   452 33F8 AD C5 02			lda COLOR1 ; = $02C5 ; COLPF1 - Playfield 1 color (Text for modes 2, 3, pixels for mode F)
+   453 33FB 8D 17 D0			sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
+   454 					
+   455 33FE 68				pla ; restore for the caller.
+   456 33FF 60				rts
+   457
+   458
    459 				;==============================================================================
-   460 				;															DLI  
-   461 				;==============================================================================
-   462 				; Yeah, gratuitous bells and whistles for presentation.
-   463 				; Given the way the code calls the scrolling it may not be possible 
-   464 				; to guarantee the CHBAS correction occurs on every frame. 
-   465 				; So, the scrolling line will fire off a DLI at the end to make 
-   466 				; sure the visible text is using the ROM font.
-   467 				;==============================================================================
-   468
-   469 3480			MyDLI
-   470 3480 48				pha           
-   471 3481 A9 E0			lda #$E0
-   472 3483 8D 0A D4			sta WSYNC  ; = $D40A ; Wait for Horizontal Sync
-   473 3486 8D 09 D4			sta CHBASE ; = $D409 ; Character Set Base Address (high)
-   474 3489 68				pla
-   475 348A 40				rti
-   476 					
-   477 					
-   478 				;===============================================================================
-   479 				; Let the assembler decide where the 1K character set resides.
-   480 					
-   481 348B				.align $0400
-   482
-   483 3800			CHARACTERSET
-   484 				;	.ds $0400  Since an ORG immediately follows this, nothing needs to be here.
-   485
-   486
-   487 				;===============================================================================
-   488 				; The C64 has screen memory fixed at $0400 by default and the code directly
-   489 				; refers to it by numeric value.  The Atari could have screen memory located 
-   490 				; anywhere in 16-bit space.  The official way to find the screen created by
-   491 				; the Operating system is through a pointer on page 0 (SAVEMSC/$58).  
-   492 				; Conforming to this would significantly change the code to more flexible,
-   493 				; but slower zero page indirect addressing.  So, to keep within the originally
-   494 				; supplied addressing modes define a custom screen at a specific location that 
-   495 				; looks like the system default.  (or, rather, looks like the 25 lines for the 
-   496 				; C64 default text display).
-   497
-   498 3800				ORG $4000
-   499
-   500 4000			SCREENRAM ; Imitate the C64 convention of a full-screen for a display mode.
-   501 						  ; Sort of.  But not really.   It will only look like a 25-line text
-   502 						  ; display.   But, screen memory can be whatever we want it to be.
-   503 						  ; The first line is the 40 scrolling characters.  
-   504 						  ; The rest of the screen redisplays the scrolling text statically, 
-   505 						  ; or blank lines.		  
-   506 = 4000				.ds [40] ; Top line that scrolls.  ; Line 1
-   507
-   508 4028			TEXTToScroll
-   509 				;;    TEXT 'this was a film from oldskoolcoder (c) jun 2019. '
-   510 				;;    TEXT 'github : https://github.com/oldskoolcoder/ '
-   511 				;;    TEXT 'twitter : @oldskoolcoder email : oldskoolcoder@outlook.com '
-   512 				;;    TEXT 'please support me on patreon @ https://www.patreon.com/'
-   513 				;;    TEXT 'oldskoolcoder thank you ;-)'
-   514 				; Atari works in screen code values. So .sb instead of .by
-   515 				; Also, realign text to fit better on screen lines...
-   516 4028-42F8> 00 00 34 68 + 	.sb "  This was a film from OldSkoolCoder    " ; line 3
-   517 4050 00 00 00 00 00 00 + 	.sb "           (c) Jun 2019.                " ; line 4
-   518 4078 67 69 74 68 75 62 + 	.sb "github:https://github.com/oldskoolcoder/" ; line 5
-   519 40A0 00 00 00 00 00 00 + 	.sb "       twitter:@oldskoolcoder           " ; line 6
-   520 40C8 00 00 00 65 6D 61 + 	.sb "   email:oldskoolcoder@outlook.com      " ; line 7
-   521 40F0 00 00 00 00 00 30 + 	.sb "     Please support me on patreon       " ; line 8
-   522 4118 00 00 00 00 00 00 + 	.sb "      @ https://www.patreon.com/        " ; line 9
-   523 4140 00 00 00 00 00 6F + 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 10
-   524 4168 21 74 61 72 69 00 + 	.sb "Atari parody by Ken Jennings, Jan 2020. " ; line 11
-   525 4190 67 69 74 68 75 62 + 	.sb "github:https://github.com/kenjennings/At" ; line 12
-   526 41B8 61 72 69 0D 2F 33 + 	.sb "ari-OSC036/                            !" ; line 13
-   527 					
-   528 					; Adding 40 blanks to scroll the text off before restarting,
-   529 					; which also doubles as an empty line for the screen memory.
-   530 41E0			SCREENEMPTY ; 40 blank characters.  Line 2, 14 - 25 on screen.
-   531 41E0 00 00 00 00 00 00 + 	.sb "                                        " ; Line 2, 14, etc.
-   532 4208 FF			    .by 255  ; -1 does work as end of string flag for Atari and C64. (will not be displayed)	
-   533
-   534 4209			EXPLAINTHIS
-   535 4209 34 68 65 00 67 72 + 	.sb "The green part of the screen shows when " ; line 15
-   536 4231 74 68 65 00 23 30 + 	.sb "the CPU is executing the scroll shift   " ; line 16 
-   537 4259 61 6C 67 6F 72 69 + 	.sb "algorithm.   The credit text above is   " ; line 17
-   538 4281 64 65 63 6C 61 72 + 	.sb "declared once and used as the screen    " ; line 18
-   539 42A9 64 61 74 61 00 79 + 	.sb "data you see, and the data driving the  " ; line 19
-   540 42D1 73 63 72 6F 6C 6C + 	.sb "scrolling text message.                 " ; Line 20
+   460 				; Wait for the scan line AFTER the scrolling line.
+   461 				; 
+   462 				; Preserve A to not interfere with caller.
+   463
+   464 3400			WaitForScanLineStart
+   465 3400 48				pha           ; save so the caller is not disrupted.
+   466
+   467 3401 A9 14			lda #20
+   468 3403 20 08 34			jsr libScreenWaitScanLine
+   469
+   470 3406 68				pla ; restore for the caller.
+   471 3407 60				rts ; Yes.  We're there.  exit.
+   472
+   473 					
+   474 				;==============================================================================
+   475 				;														SCREENWAITSCANLINE  A  
+   476 				;==============================================================================
+   477 				; Subroutine to wait for ANTIC to reach a specific scanline in the display.
+   478 				;
+   479 				; ScreenWaitScanLine expects  A  to contain the target scanline.
+   480 				;==============================================================================
+   481
+   482 3408			libScreenWaitScanLine
+   483 					
+   484 3408			bLoopWaitScanLine
+   485 3408 CD 0B D4			cmp VCOUNT           ; Does A match the scanline?
+   486 340B D0 FB			bne bLoopWaitScanLine ; No. Then have not reached the line.
+   487
+   488 340D 60				rts ; Yes.  We're there.  exit.
+   489
+   490 					
+   491 				;==============================================================================
+   492 				;															SCREENWAITFRAME  A  
+   493 				;==============================================================================
+   494 				; Subroutine to wait for the current frame to finish display.
+   495 				; At the end we know the electron beam is at the top of the screen, so there
+   496 				; is reasonable assumption that code immediately following this will not be
+   497 				; interrupted by the VBI.
+   498 				;
+   499 				; ScreenWaitFrame  uses A
+   500 				;==============================================================================
+   501
+   502 340E			libScreenWaitFrame
+   503 340E 48				pha           ; save so the caller is not disrupted.
+   504 340F A5 14			lda RTCLOK60  ; Read the jiffy clock incremented during vertical blank.
+   505
+   506 3411			bLoopWaitFrame
+   507 3411 C5 14			cmp RTCLOK60      ; Is it still the same?
+   508 3413 F0 FC			beq bLoopWaitFrame ; Yes.  Then the frame has not ended.
+   509
+   510 3415 68				pla ; restore for the caller.
+   511 3416 60				rts ; No.  Clock changed means frame ended.  exit.
+   512 					
+   513 					
+   514 				;==============================================================================
+   515 				;															DLI  
+   516 				;==============================================================================
+   517 				; Yeah, gratuitous bells and whistles for presentation.
+   518 				; Given the way the code calls the scrolling it may not be possible 
+   519 				; to guarantee the CHBAS correction occurs on every frame. 
+   520 				; So, the scrolling line will fire off a DLI at the end to make 
+   521 				; sure the visible text is using the ROM font.
+   522 				;==============================================================================
+   523
+   524 3417			MyDLI
+   525 3417 48				pha           
+   526 3418 A9 E0			lda #>ChrRom ; = $E0000 
+   527 341A 8D 0A D4			sta WSYNC    ; = $D40A ; Wait for Horizontal Sync
+   528 341D 8D 09 D4			sta CHBASE   ; = $D409 ; Character Set Base Address (high)
+   529 3420 68				pla
+   530 3421 40				rti
+   531 					
+   532 					
+   533 				;===============================================================================
+   534 				; Let the assembler decide where the 1K character set resides.
+   535 					
+   536 3422				.align $0400
+   537
+   538 3800			ChrArea  ; == CHARACTER SET == someplace in RAM.
+   539 				;	.ds $0400 ; Since an ORG immediately follows this, nothing needs to be here.
+   540
    541
-   542
-   543
-   544 					
-   545 				;===============================================================================
-   546 42F9				.align $0100 ; Go to next page boundary to make sure display list 
-   547 					             ; doesn't cross the 1K boundary.
-   548
-   549 4300			DISPLAYLIST
-   550 4300-4330> 70			.by DL_BLANK_8   ; extra 8 blank to center 25 text lines
-   551 4301 70				.by DL_BLANK_8   ; 8 blank scan lines
-   552 4302 30				.by DL_BLANK_4   ; 
-   553
-   554 4303				mDL_LMS DL_TEXT_2|DL_DLI, SCREENRAM ; mode 2 text and init memory scan. Line 1
+   542 				;===============================================================================
+   543 				; The C64 has screen memory fixed at $0400 by default and the code directly
+   544 				; refers to it by numeric value.  The Atari could have screen memory located 
+   545 				; anywhere in 16-bit space.  The official way to find the screen created by
+   546 				; the Operating system is through a pointer on page 0 (SAVEMSC/$58).  
+   547 				; Conforming to this would significantly change the code to more flexible,
+   548 				; but slower zero page indirect addressing.  So, to keep within the originally
+   549 				; supplied addressing modes define a custom screen at a specific location that 
+   550 				; looks like the system default.  (or, rather, looks like the 25 lines for the 
+   551 				; C64 default text display).
+   552
+   553 3800				ORG $4000
+   554
+   555 4000			SCREENRAM ; Imitate the C64 convention of a full-screen for a display mode.
+   556 						  ; Sort of.  But not really.   It will only look like a 25-line text
+   557 						  ; display.   But, screen memory can be whatever we want it to be.
+   558 						  ; The first line is the 40 scrolling characters.  
+   559 						  ; The rest of the screen redisplays the scrolling text statically, 
+   560 						  ; or blank lines.		  
+   561 = 4000				.ds [40] ; Top line that scrolls.  ; Line 1
+   562
+   563 4028			TEXTToScroll
+   564 				;;    TEXT 'this was a film from oldskoolcoder (c) jun 2019. '
+   565 				;;    TEXT 'github : https://github.com/oldskoolcoder/ '
+   566 				;;    TEXT 'twitter : @oldskoolcoder email : oldskoolcoder@outlook.com '
+   567 				;;    TEXT 'please support me on patreon @ https://www.patreon.com/'
+   568 				;;    TEXT 'oldskoolcoder thank you ;-)'
+   569 				; Atari works in screen code values. So .sb instead of .by
+   570 				; Also, realign text to fit better on screen lines...
+   571 4028-42F8> 00 00 34 68 + 	.sb "  This was a film from OldSkoolCoder    " ; line 3
+   572 4050 00 00 00 00 00 00 + 	.sb "           (c) Jun 2019.                " ; line 4
+   573 4078 67 69 74 68 75 62 + 	.sb "github:https://github.com/oldskoolcoder/" ; line 5
+   574 40A0 00 00 00 00 00 00 + 	.sb "       twitter:@oldskoolcoder           " ; line 6
+   575 40C8 00 00 00 65 6D 61 + 	.sb "   email:oldskoolcoder@outlook.com      " ; line 7
+   576 40F0 00 00 00 00 00 30 + 	.sb "     Please support me on patreon       " ; line 8
+   577 4118 00 00 00 00 00 00 + 	.sb "      @ https://www.patreon.com/        " ; line 9
+   578 4140 00 00 00 00 00 6F + 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 10
+   579 4168 21 74 61 72 69 00 + 	.sb "Atari parody by Ken Jennings, Jan 2020. " ; line 11
+   580 4190 67 69 74 68 75 62 + 	.sb "github:https://github.com/kenjennings/At" ; line 12
+   581 41B8 61 72 69 0D 2F 33 + 	.sb "ari-OSC036/                  The End...!" ; line 13
+   582 					
+   583 					; Adding 40 blanks to scroll the text off before restarting,
+   584 					; which also doubles as an empty line for the screen memory.
+   585 41E0			SCREENEMPTY ; 40 blank characters.  Line 2, 14 - 25 on screen.
+   586 41E0 00 00 00 00 00 00 + 	.sb "                                        " ; Line 2, 14, etc.
+   587 4208 FF				.by 255  ; -1 does work as end of string flag for Atari and C64. (will not be displayed)	
+   588
+   589 4209			EXPLAINTHIS
+   590 4209 34 68 65 00 67 72 + 	.sb "The green part of the screen shows when " ; line 15
+   591 4231 74 68 65 00 23 30 + 	.sb "the CPU is executing the scroll shift   " ; line 16 
+   592 4259 61 6C 67 6F 72 69 + 	.sb "algorithm.   The credit text above is   " ; line 17
+   593 4281 64 65 63 6C 61 72 + 	.sb "declared once and used as the screen    " ; line 18
+   594 42A9 64 61 74 61 00 79 + 	.sb "data you see, and the data driving the  " ; line 19
+   595 42D1 73 63 72 6F 6C 6C + 	.sb "scrolling text message.                 " ; Line 20
+   596
+   597
+   598
+   599 					
+   600 				;===============================================================================
+   601 42F9				.align $0100 ; Go to next page boundary to make sure display list 
+   602 					             ; can't cross a 1K boundary.
+   603
+   604 4300			DISPLAYLIST
+   605 4300-4330> 70			.by DL_BLANK_8   ; extra 8 blank to center 25 text lines
+   606 4301 70				.by DL_BLANK_8   ; 8 blank scan lines
+   607 4302 30				.by DL_BLANK_4   ; 
+   608
+   609 4303				mDL_LMS DL_TEXT_2|DL_DLI, SCREENRAM ; mode 2 text and init memory scan. Line 1
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2|DL_DLI&$0F
     11 4303 C2				.byte DL_TEXT_2|DL_DLI|DL_LMS
     12 4304 00 40			.word SCREENRAM   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   555
-   556 4306				mDL_LMS DL_TEXT_2, SCREENEMPTY ; mode 2 text and init memory scan. Line 2.
+   610
+   611 4306				mDL_LMS DL_TEXT_2, SCREENEMPTY ; mode 2 text and init memory scan. Line 2.
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 4306 42				.byte DL_TEXT_2|DL_LMS
     12 4307 E0 41			.word SCREENEMPTY   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   557
-   558 4309				mDL_LMS DL_TEXT_2, TEXTToScroll ; mode 2 text and init memory scan. Line 3 
+   612
+   613 4309				mDL_LMS DL_TEXT_2, TEXTToScroll ; mode 2 text and init memory scan. Line 3 
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 4309 42				.byte DL_TEXT_2|DL_LMS
     12 430A 28 40			.word TEXTTOSCROLL   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   559
-   560 					.rept 11                                                   ; Lines 4 to 14.
-   561 					.BY DL_TEXT_2   
-   562 					.ENDR
-   562 					.endr
+   614
+   615 					.rept 11                                                   ; Lines 4 to 14.
+   616 					.BY DL_TEXT_2   
+   617 					.ENDR
+   617 					.endr
 Source: REPT
-   561 430C 02				.BY DL_TEXT_2   
-   561 430D 02				.BY DL_TEXT_2   
-   561 430E 02				.BY DL_TEXT_2   
-   561 430F 02				.BY DL_TEXT_2   
-   561 4310 02				.BY DL_TEXT_2   
-   561 4311 02				.BY DL_TEXT_2   
-   561 4312 02				.BY DL_TEXT_2   
-   561 4313 02				.BY DL_TEXT_2   
-   561 4314 02				.BY DL_TEXT_2   
-   561 4315 02				.BY DL_TEXT_2   
-   561 4316 02				.BY DL_TEXT_2   
+   616 430C 02				.BY DL_TEXT_2   
+   616 430D 02				.BY DL_TEXT_2   
+   616 430E 02				.BY DL_TEXT_2   
+   616 430F 02				.BY DL_TEXT_2   
+   616 4310 02				.BY DL_TEXT_2   
+   616 4311 02				.BY DL_TEXT_2   
+   616 4312 02				.BY DL_TEXT_2   
+   616 4313 02				.BY DL_TEXT_2   
+   616 4314 02				.BY DL_TEXT_2   
+   616 4315 02				.BY DL_TEXT_2   
+   616 4316 02				.BY DL_TEXT_2   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   563 					
-   564 4317				mDL_LMS DL_TEXT_2, EXPLAINTHIS ; mode 2 text and init memory scan. Line 15
+   618 					
+   619 4317				mDL_LMS DL_TEXT_2, EXPLAINTHIS ; mode 2 text and init memory scan. Line 15
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 4317 42				.byte DL_TEXT_2|DL_LMS
     12 4318 09 42			.word EXPLAINTHIS   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   565 						
-   566 					.rept 5                                                   ; Lines 16 to 20.
-   567 					.BY DL_TEXT_2   
-   568 					.ENDR
-   568 					.endr
+   620 						
+   621 					.rept 5                                                   ; Lines 16 to 20.
+   622 					.BY DL_TEXT_2   
+   623 					.ENDR
+   623 					.endr
 Source: REPT
-   567 431A 02				.BY DL_TEXT_2   
-   567 431B 02				.BY DL_TEXT_2   
-   567 431C 02				.BY DL_TEXT_2   
-   567 431D 02				.BY DL_TEXT_2   
-   567 431E 02				.BY DL_TEXT_2   
+   622 431A 02				.BY DL_TEXT_2   
+   622 431B 02				.BY DL_TEXT_2   
+   622 431C 02				.BY DL_TEXT_2   
+   622 431D 02				.BY DL_TEXT_2   
+   622 431E 02				.BY DL_TEXT_2   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   569 					
-   570 					.rept 5            ; keep displaying the same empty line for Lines 21 - 25
-   571 					MDL_LMS DL_TEXT_2, SCREENEMPTY 
-   572 					.ENDR
-   572 					.endr
+   624 					
+   625 					.rept 5            ; keep displaying the same empty line for Lines 21 - 25
+   626 					MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   627 					.ENDR
+   627 					.endr
 Source: REPT
-   571 431F				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   626 431F				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 431F 42				.byte DL_TEXT_2|DL_LMS
     12 4320 E0 41			.word SCREENEMPTY   
-   571 4322				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   626 4322				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 4322 42				.byte DL_TEXT_2|DL_LMS
     12 4323 E0 41			.word SCREENEMPTY   
-   571 4325				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   626 4325				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 4325 42				.byte DL_TEXT_2|DL_LMS
     12 4326 E0 41			.word SCREENEMPTY   
-   571 4328				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   626 4328				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 4328 42				.byte DL_TEXT_2|DL_LMS
     12 4329 E0 41			.word SCREENEMPTY   
-   571 432B				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   626 432B				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 432B 42				.byte DL_TEXT_2|DL_LMS
     12 432C E0 41			.word SCREENEMPTY   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   573 					
-   574 432E				mDL_JVB DISPLAYLIST ; End.  Wait for Vertical Blank.  Restart the Display List
+   628 					
+   629 432E				mDL_JVB DISPLAYLIST ; End.  Wait for Vertical Blank.  Restart the Display List
 Macro: MDL_JVB [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      6 432E 41				.byte DL_JUMP_VB
      7 432F 00 43			.word DISPLAYLIST   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   575
-   576
-   577 				;===============================================================================
-   578 				; Store the program start location in the Atari DOS RUN Address.
-   579 				; When DOS is done loading the executable file into memory it will 
-   580 				; automatically jump to the address placed here in DOS_RUN_ADDR.
-   581
-   582 				; DOS_RUN_ADDR =  $02e0 ; Execute at address stored here when file loading completes.
-   583
-   584 4331				mDiskDPoke DOS_RUN_ADDR, StartScroller
+   630
+   631
+   632 				;===============================================================================
+   633 				; Store the program start location in the Atari DOS RUN Address.
+   634 				; When DOS is done loading the executable file into memory it will 
+   635 				; automatically jump to the address placed here in DOS_RUN_ADDR.
+   636
+   637 				; DOS_RUN_ADDR =  $02e0 ; Execute at address stored here when file loading completes.
+   638
+   639 4331				mDiskDPoke DOS_RUN_ADDR, StartScroller
 Macro: MDISKDPOKE [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/macros.asm]
      4 = 4331					DISKDPOKE_TEMP =*
      5 4331					ORG DOS_RUN_ADDR
-     6 02E0-02E1> 5C 33				.word STARTSCROLLER
+     6 02E0-02E1> 08 33				.word STARTSCROLLER
      7 02E2					ORG DISKDPOKE_TEMP
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   585
-   586 				; --------------------------------------------------------------------
-   587 					END ; finito
+   640
+   641 				; --------------------------------------------------------------------
+   642 					END ; finito

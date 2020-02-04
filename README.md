@@ -5,7 +5,7 @@ OldSkoolCoder's Github:  https://github.com/OldSkoolCoder/TEXTScrollers
 
 ---
 
-[**Episode 1**](hhttps://github.com/kenjennings/Atari-OSC036/tree/master/Episode1 "**Episode 1**") - BASIC program that scrolls the top line of the display.  Of course, this is coarse scrolling a character at a time.
+[**Episode 1**](https://github.com/kenjennings/Atari-OSC036/tree/master/Episode1 "**Episode 1**") - BASIC program that scrolls the top line of the display.  Of course, this is coarse scrolling a character at a time.
 
 [**Episode 2**](https://github.com/kenjennings/Atari-OSC036/tree/master/Episode2 "**Episode 2**") - Assembly language equivalent of the BASIC scrolling program. ***WIP***
 

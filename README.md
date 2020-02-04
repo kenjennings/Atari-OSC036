@@ -1,5 +1,5 @@
 # Atari-OSC036
-Atari port of OldSchoolCoders C64 Tutorial 36
+Atari port of OldSkoolCoder's C64 Tutorial 36
 
 OldSkoolCoder's Github:  https://github.com/OldSkoolCoder/TEXTScrollers
 

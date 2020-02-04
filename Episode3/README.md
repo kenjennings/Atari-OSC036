@@ -3,9 +3,9 @@ Atari port of OldSkoolCoder's C64 Tutorial 36, Episode 3
 
 ---
 
-The original looping code takes longer than a full NTSC frame to execute.  After a number of optimizations to eliminate some comparisons, branches, etc. I managed to just barely squeeze the processing time into one NTSC frame.
+The original code takes longer than a full NTSC frame to execute.  After a number of optimizations to eliminate some comparisons, branches, etc. I just barely managed to squeeze the processing time into one NTSC frame on the Atari.
 
-The timing is on an NTSC Atari which has a lot more CPU time per frame than a C64, so it is unlikely even these optimizations can be re-port in a practical way back to the C64.
+The timing is on an NTSC Atari which has a lot more CPU time per frame than a C64.  It probably isn't short enough to be re-port in a practical way back to the NTSC C64.  Maybe it woould work on a PAL C64 which has more CPU time during a frame than the NTSC C64.
 
 ---
 

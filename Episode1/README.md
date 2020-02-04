@@ -14,7 +14,7 @@ In the Atari BASIC program the original C64 BASIC code is included, but commente
 **TEXTSCRL.TXT** - LIST'ed Atari BASIC program which uses normal unix end of line characters.
 
 
-The example is also present in OSS BASIC XL with the code cleaned up.   The C64 code is no longer included and the file is renumbered.
+The example is also presented in OSS BASIC XL with the code cleaned up.   The C64 code is no longer included and the file is renumbered.
 
 **TEXTSCRL.BXL** - Tokenized OSS BASIC XL program.  
 

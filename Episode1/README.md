@@ -23,7 +23,7 @@ The example is also present in OSS BASIC XL with the code cleaned up.   The C64 
 **TEXTSCRL.TXL** - LIST'ed OSS BASIC XL program which uses normal unix end of line characters.
 
 
-Notable difference - The C64 version deletes a character at the start of the top line, then uses 39 arrow-right characters to move to the last position on the line to print the next character of the scrolling text.   On the Atari, the full screen editor cursor can move the cursor off the left edge of the screen to then reappear on the same line at the right edge.   (I kind of expected the C64 could do the same thing... Yes?  No? ??)  So, the Atari version only prints two chracters before printing the next character of the scrolling text - delete character to remove the character at the start of the line, then arrow left character to wrap around to the right side of the screen. 
+Notable difference - The C64 version deletes a character at the start of the top line, then uses 39 arrow-right characters to move to the last position on the line to print the next character of the scrolling text.   On the Atari, the full screen editor cursor can move the cursor off the left edge of the screen to then reappear on the same line at the right edge.   (I kind of expected the C64 could do the same thing... Yes?  No? ??)  So, the Atari version only prints two chracters before printing the next character of the scrolling text - delete character to remove the character at the start of the line, then arrow-left character to wrap around to the right side of the screen. 
 
 ---
 

@@ -1,5 +1,5 @@
 # Atari-OSC036 Episode 2
-Atari port of OldSkoolCoder's C64 Tutorial 36, Episode 2 
+Atari port of OldSkoolCoder's C64 Tutorial 36, Episode 2 ** WORK IN PROGRESS **
 
 ---
 

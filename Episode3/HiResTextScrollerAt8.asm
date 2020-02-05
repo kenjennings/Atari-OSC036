@@ -218,14 +218,6 @@ TextLoader  ; <- Self-modifying code changes the address used below.
 	; No other character has the high bit set.
 	; therefore, CMP is not necessary.  Use negative flag.
 
-;	clc                ; Increment the address pointing to the 
-;	lda TextLoader + 1 ; input buffer of text to scroll.
-;	adc #1
-;	sta TextLoader + 1
-;	lda TextLoader + 2
-;	adc #0
-;	sta TextLoader + 2
-
 	inc TextLoader + 1    ; Increment the address pointing to the 
 	bne b_GCIM_SkipHiByte ; input buffer of text to scroll.
 	inc TextLoader + 2
@@ -301,16 +293,16 @@ b_TS_StillGoing
 	sta zbCounter
 
 b_TS_DoNextPixel
-	jsr ScrollOverOnePixel
-
 	jsr WaitForScanLineStart; start work AFTER the scrolling line.
 	jsr TestOn ; Set new hardware colors to indicate when the work starts.
+
+	jsr ScrollOverOnePixel
+	
+	jsr TestOff ; Restore hardware colors when the work is over.
 
 	dec zbCounter          ; Decrement.  Has it counted 8 pixels?
 	bpl b_TS_DoNextPixel   ; No.  Let's shift  again.
 	
-;	jsr TestOff ; Restore hardware colors when the work is over.
-
 	jmp TextScroller
 
 

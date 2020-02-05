@@ -349,13 +349,19 @@ TextLoader  ; <- Self-modifying code changes the address used below.
 	; according to the $FF end of data byte. 
 ;	bmi b_GCIM_EndOfText
 
-	clc                ; Increment the address pointing to the 
-	lda TextLoader + 1 ; input buffer of text  to scroll.
-	adc #1
-	sta TextLoader + 1
-	lda TextLoader + 2
-	adc #0
-	sta TextLoader + 2
+;;	clc                ; Increment the address pointing to the 
+;;	lda TextLoader + 1 ; input buffer of text  to scroll.
+;;	adc #1
+;;	sta TextLoader + 1
+;;	lda TextLoader + 2
+;;	adc #0
+;;	sta TextLoader + 2
+	
+	inc TextLoader + 1    ; Increment the address pointing to the 
+	bne b_GCIM_SkipHiByte ; input buffer of text to scroll.
+	inc TextLoader + 2
+b_GCIM_SkipHiByte
+
 ;;@EndOfText
 ;b_GCIM_EndOfText
 	pla                ; Get the text byte back.  A = next character
@@ -459,10 +465,12 @@ b_TS_StillGoing
 ;;@DoNextPixel
 b_TS_DoNextPixel
 ;;	pha                    ; Save A counter value for later.
-	jsr ScrollOverOnePixel
-
 	jsr WaitForScanLineStart; start work AFTER the scrolling line.
 	jsr TestOn ; Set new hardware colors to indicate when the work starts.
+
+	jsr ScrollOverOnePixel
+
+	jsr TestOff ; Restore hardware colors when the work is over.
 
 ;;@loop
 ;;	lda #200               ; Scanline -> A
@@ -478,11 +486,9 @@ b_TS_DoNextPixel
 ;	bne b_TS_DoNextPixel   ; No.  Let's shift  again.
 	bpl b_TS_DoNextPixel   ; No.  Let's shift  again.
 
-;	jsr TestOff ; Restore hardware colors when the work is over.
-
 	jmp TextScroller
 
-
+	
 ;===============================================================================
 ; ScrollOverOnePixel -- relocated to page 0 to assist with optimizations.
 

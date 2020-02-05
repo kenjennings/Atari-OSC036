@@ -13,7 +13,7 @@ The timing is on an NTSC Atari which has a lot more CPU time per frame than a C6
 
 ***HiResTextScroller.asm*** - The original C64 assembly with modifications for the Atari and attempted optimizations.  C64-specific code is present and commented out.
 
-***HiResTextScrollerAt8.asm*** - The same as the  "HiResTextScroller.asm" file, but with all the C64 code removed.
+***HiResTextScrollerAt8.asm*** - The same as the  "HiResTextScroller.asm" file, but with all the unused C64 code and some useless comments deleted.
 
 ---
 

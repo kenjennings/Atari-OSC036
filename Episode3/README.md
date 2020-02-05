@@ -3,6 +3,8 @@ Atari port of OldSkoolCoder's C64 Tutorial 36, Episode 3
 
 ---
 
+[![Atari Version Episode 3](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode3/AtariScreenGrab.png "Atari Version Episode 3")](#features1)
+
 Assembly program that implements fine scrolling by shifting bitmapped images through a character set for the C64, which is essentially nearly identical to the way the Atari works.
 
 The original code takes longer than a full NTSC frame to execute.  After a number of optimizations to eliminate some comparisons, branches, etc. it takes about 2/3 of a frame to complete one fine scroll step on the Atari.

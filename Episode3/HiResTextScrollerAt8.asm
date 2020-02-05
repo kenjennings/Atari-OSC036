@@ -2,12 +2,11 @@
 ; 6502 assembly on Atari.
 ; Built with eclipse/wudsn/atasm.
 ;
-; Atari port of C64 program to horizontally scroll text via 
-; character bitmap shifting.
+; Atari port of C64 program to horizontally scroll text via character 
+; bitmap shifting.   Clean version of code - C64-specific code and 
+; anything deprecated by optimization are all deleted.
 ;
-; Original C64 code that is unused or modified is commented out with two semicolons ;;
-;
-; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode3/HiResTextScroller.asm
+; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode3/HiResTextScrollerAt8.asm
 ;
 ; Originally from:
 ; https://github.com/OldSkoolCoder/TEXTScrollers/blob/master/HiResTextScroller.asm
@@ -40,36 +39,18 @@
 zbCounter = $FF ; at the end of page 0, so 127 bytes are available for code. 
 
 
-;===============================================================================
-; Following is N/A for Atari.  Auto start is done by the executable file 
-; setting an address in the DOS_RUN_ADDR at load time.  See end of source.
-
-;; 10 SYS (2064)
-
-;; *=$0801
-
-;;    BYTE    $0E, $08, $0A, $00, $9E, $20, $28,  $32, $30, $36, $34, $29, $00, $00, $00
-
-;; *=$0810
-
-;;	jmp StartScroller
-
-
 	ORG $80 ; Evilness.  Loading code into Page 0 to speed up the scroll.
 
-	
+
 ;===============================================================================
-; ScrollOverOnePixel - Relocated from elsewhere to help eith optimizations.
+; ScrollOverOnePixel - Relocated from elsewhere to help with optimizations.
+; This is in Page 0 which speeds up assignment of the ChrByteLoc value.
+; This matters when it has to be repeated 40 more times.
 
 ScrollOverOnePixel
 	ldy #40                 ; Y = 40th char, the buffered end of scrolling line.
 	
-;;	lda ChrAreaLo,y         ; get address of character image in RAM
-;;	sta ChrByteLoc + 1      ; and self-modify code below.
-;;	lda ChrAreaHi,y
-;;	sta ChrByteLoc + 2
-
-	; The table lookup above is not needed here.  This initialization always 
+	; The table lookup is not needed here.  This initialization always 
 	; starts with the index value 40.  So, then just insert values directly 
 	; which is two bytes less, and a few cycles saved....
 	
@@ -81,49 +62,26 @@ ScrollOverOnePixel
 	lda #0                  ; A = 0 = stack of carry bits to roll in.
 	clc
 	
-;; RotateTheNextCharacter
 b_SOOP_RotateTheNextCharacter
-;;	ldx #0                  ; X = 0
-; Work in reverse from 7 to 0 removes the need for CMP
-	ldx #7
+	ldx #7           ; Work in reverse from 7 to 0 removes the need for CMP
 
 ; The following is the guts.   This eventually loops 328 times 
 ; to shift the character set image by one bit.	
-;; Rotatethe8Bytes
 b_SOOP_Rotatethe8Bytes
 	pha                     ; (3) Save current carry bits in A now.
 	rol                     ; (2) A << Roll bits Left. (high bit out into carry)
 ChrByteLoc ; <- Self-modifying code changes the address used below.
-	rol ChrArea,x        ; (7) Roll a byte of character image, insert carry from A
+	rol ChrArea,x           ; (7) Roll a byte of character image, insert carry from A
 	pla                     ; (4) get the carry bit collection for A again.
 	rol                     ; (2) A<< Roll bits left, dump top bit, insert new carry bit.
-;;	inx                     ; next value for loop
 	dex                     ; (2) next value for loop
-;;	cpx #8                  ; Have we done 8 bytes?
-;;	bne Rotatethe8Bytes
-;	bne b_SOOP_Rotatethe8Bytes ; No, loop for the remaining bytes of the character.
 	bpl b_SOOP_Rotatethe8Bytes ; (3) No, loop for the remaining bytes of the character.
 	;                          ; (23) * 7 + 22 = 183 per byte.
 	;                          ; 183 * 41 = 7,503 per scroll.
 
-; Unroll this loop to eliminate the BPL.  This saves 41 occurrences of BPL.
-
-
 	; Accumulator now contains the vertical pixel pattern from the previous 
 	; 8 bytes to apply to the next character in the RAM character set.
 	pha                     ; (3) Save the new stack of rolled carry bits.
-
-;;	sec                     ; (2) Subtract 8 from the pointer to the character 
-;;	lda ChrByteLoc + 1      ; (4) image in RAM and self-modify above.
-;;	sbc #8                  ; (2)
-;;	sta ChrByteLoc + 1      ; (4)
-;;	lda ChrByteLoc + 2      ; (4)
-;;	sbc #0                  ; (2)
-;;	sta ChrByteLoc + 2      ; (4)
-	;                       ; (22 cycles for math above)
-	; Or for 41 bytes, this is 902 cycles per scroll
-	
-	; What if this was table driven? (below)
 
 	; Y handling moved from below, because decrement is needed 
 	; before using the table. ...
@@ -134,97 +92,43 @@ ChrByteLoc ; <- Self-modifying code changes the address used below.
 	sta ChrByteLoc + 1      ; (4) (but only 3 in page 0)
 	lda ChrAreaHi,y         ; (4)
 	sta ChrByteLoc + 2      ; (4) (but only 3 in page 0)
-                           ; (16 cycles for table lookup)
+	;                       ; (16 cycles for table lookup)
 	; or for 41 bytes this is 656 cycles per scroll)
-	; therefore, I cannot tell why the math was used above instead of the 
-	; table lookup that was originally in place to initialize this routine.
 
-	; The next optimization would be if the entire 
-	; code of RotateTheNextCharacter itself were in 
-	; Page 0, then the internal self-references to
-	; ChrByteLoc would be page 0 references and one
-	; cycle faster (2 LDA are then 2 cycles * 41 = 
-	; 82 cycles saved) and then 656 - 82 = 574 cycles per scroll.
-	; In Page 0 the code would be about 24 bytes, 
-	; so it should fit.
-	
-	pla                      ; (4) Retrieve the stack of carry bits.
-;;	dey                      ; (2) Y = Y - 1
+	pla                     ; (4) Retrieve the stack of carry bits.
 	jmp b_SOOP_RotateTheNextCharacter
 
-;;	cpy #255
-;;	bne RotateTheNextCharacter
 
-;	bpl b_SOOP_RotateTheNextCharacter ; (3) When Y rolls from 0 to -1, then stop.
-	;                            (9) 9 * 40 + 8 = 368.
-	
-	; So, the total is around 8,773 cycles per scroll.
-
-	; tidy, clean stack for return.
 b_SOOP_ExitScrolling
-	pla
+	pla                     ; tidy, clean stack for return.
 	
 	rts
 
-	
-	
+
 ;===============================================================================
 ; LOMEM_DOS_DUP = $3308 ; First usable memory after DOS and DUP 
 
 	ORG LOMEM_DOS_DUP ; Overdoing the niceness.  Start "program" after DOS and DUP 
 
-	
-;; ChrArea =$3200       ; User Defined Character Area
-; Moving this for Atari, since we started waaaay up in memory.
-; Just let the assembler supply the value later.
 
-;; ChrRom  =$D000       ; ChrSet Rom Area
-; Atari has this elsewhere...
-ChrRom  = $E000          ; ChrSet Rom Area
+; Atari OS Character set ROM ...
+ChrRom = $E000          ; ChrSet Rom Area
 
 
-; 40 character mapping table (for MADS changed BYTE to .byte) 
-; Actually, 42 entries here, because of ??? The code could use only 41.
-;
-; Actually (again), this table lookup is not even needed.
-; The code references this data in one place, and it is always 
-; done when the index is 40.  
-;
-; So (further revision) this table was previously commented out, but 
-; on consideration of optimization I determined the code would work 
-; faster using table lookups rather than subtracting 8 from the pointers.
+	.align $0100 	; forcing alignment so the data does not cross page border 
 
-	; forcing alignment so the data does not cross page border 
+; This table below was previously commented out, but 
+; on consideration of optimization I determined the code 
+; would work slightly faster using table lookups rather 
+; than subtracting 8 from the pointers.
 
-	.align $0100
-	
-;;ChrAreaLo
-;;	.byte $00,$08,$10,$18,$20,$28,$30,$38,$40,$48
-;;	.byte $50,$58,$60,$68,$70,$78,$80,$88,$90,$98
-;;	.byte $A0,$A8,$B0,$B8,$C0,$C8,$D0,$D8,$E0,$E8
-;;	.byte $F0,$F8,$00,$08,$10,$18,$20,$28,$30,$38
-;;	.byte $40,$48
-
-; Table of 40 + 1 bytes of the low byte of TEMP, progressively increasing by 8.
+; Table of 40 + 1 bytes of the low bytes, progressively increasing by 8.
 ChrAreaLo
 	:41 .byte <[ChrArea+#*8]
-	
-;;ChrAreaHi
-;;	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
-;;	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
-;;	.byte >ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea,>ChrArea
-;;	.byte >ChrArea,>ChrArea,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1,>ChrArea+1
-;;	.byte >ChrArea+1,>ChrArea+1
 
-; Table of 40 + 1 bytes of the high byte of TEMP, progressively increasing by 8.
+; Table of 40 + 1 bytes of the high bytes, progressively increasing by 8.
 ChrAreaHi
 	:41 .byte >[ChrArea+#*8]
-	
-
-	
-; Text to Scroll...
-; This data to put in the scroller has been moved into the screen RAM declaration 
-; so the data can be re-used as the static text shown on screen. 
 
 
 ;===============================================================================
@@ -234,10 +138,9 @@ ChrAreaHi
 StartScroller ; This is where Atari will automatically jump when the program loads.
 	jsr InitCharacterArea
 	jsr InitScreen
-;;	jsr InitTextScroller
 	jsr TextScroller
-	
-	rts ; bye.
+
+	rts ; bye.  Exit to DOS/Memo Pad as applicable.
 
 
 ;===============================================================================
@@ -246,18 +149,15 @@ StartScroller ; This is where Atari will automatically jump when the program loa
 ; 42 characters * 8 = 336 bytes, so 2 pages.
 
 InitCharacterArea
-	ldy #0
-;;	lda #0
-	tya
-;;@Inner
+	ldy #0              ; Y = 0
+	tya                 ; A = 0
+
 b_ICA_InnerLoop
 	sta ChrArea,y       ; Set First Bank
 	sta ChrArea+$100,y  ; Set Second Bank
-	iny
-; Roll over from $FF to $00 will automatically set Z flag, 
-; so cpy #0 is not needed.
-;;	cpy #0             
-;	bne @Inner
+	
+	iny             ; Roll over from $FF to $00 will automatically clear Z flag 
+
 	bne b_ICA_InnerLoop
 
 	rts
@@ -275,60 +175,35 @@ b_ICA_InnerLoop
 ; screen is always readable.
 
 InitScreen
-;;    lda #$93    ; Clear Screen
-;;    jsr $FFD2   ; Output Character
-
-;;	ldy #0
-;;@Looper
-;;	tya
-;;	ora #64         ; Add 64 to Character
-;;	sta $0400,y     ; C64 fixed address for screen.    SCREENRAM = $0400
-;;	iny
-;;	cpy #40         ; 40 Characters in 1 Line
-;;	bne @looper 
-
 	; Reverse counting does not require a CMP
 	ldy #39         ; 39 to 0 is 40 bytes.
+	
 b_IS_Looper
-	tya
+	tya             ; A = Y counter.
 	sta SCREENRAM,y ; Wherever the assembler put the screen ram below.
 	dey
 	bpl b_IS_Looper ; Loop while positive.  At -1/$FF/255 it falls through.
 	
-;;	lda #28         ; Set VIC Chip To Right Character Mapping Memory    
-;;	sta $d018       ;
-
 	lda #>ChrArea      ; Tell Atari OS where the new character set is.
-	sta CHBAS          ; = $02F4 ; CHBASE
+	sta CHBAS          ; = $02F4 ; CHBASE OS shadow register
 	
 	jsr libScreenWaitFrame ; Make sure the display list update below 
 	                       ; cannot be interrupted by the vertical blank.
-	lda #<DISPLAYLIST  ; Tell the system where the new display list is.
+
+	lda #<DISPLAYLIST      ; Tell the system where to find the new display list.
 	sta SDLSTL
 	lda #>DISPLAYLIST
 	sta SDLSTH
 	
-	lda #<MyDLI        ; DLI reset the character set to the ROM version 
-	sta VDSLST         ; to keep the on screen text legible.
+	lda #<MyDLI        ; DLI to reset the character set to the ROM version 
+	sta VDSLST         ; making the static text on screen legible.
 	lda #>MyDLI        
 	sta VDSLST+1
 	
-	lda #[NMI_DLI|NMI_VBI]     ; Turn On DLIs
+	lda #[NMI_DLI|NMI_VBI]  ; Turn On DLIs
 	sta NMIEN
 	
 	rts
-
-
-;===============================================================================	
-;; Initialise The Text Scroller Pointers
-; Unused code
-;; InitTextScroller
-;;    ldy #<TEXTToScroll
-;;    sty TextLoader + 1
-;;    ldy #>TEXTToScroll
-;;    sty TextLoader + 2
-	
-;;    rts
 
 
 ;===============================================================================
@@ -338,45 +213,42 @@ b_IS_Looper
 GetCharacterInMessage
 TextLoader  ; <- Self-modifying code changes the address used below.
 	lda TEXTToScroll     ; Get byte from the input data
-	pha                     ; Save for later.
+	pha                  ; Save for later.
 	; -1 should be the end of string sentinel.  
 	; No other character has the high bit set.
-	; therefore, the CMP is not necessary.  Use negative flag.
-;;	cmp #255
-;;  beq @EndOfText
-	; On further consideration, this branch is not actually needed, 
-	; because the PLA at the end will set the negative flag 
-	; according to the $FF end of data byte. 
-;	bmi b_GCIM_EndOfText
+	; therefore, CMP is not necessary.  Use negative flag.
 
-	clc                ; Increment the address pointing to the 
-	lda TextLoader + 1 ; input buffer of text  to scroll.
-	adc #1
-	sta TextLoader + 1
-	lda TextLoader + 2
-	adc #0
-	sta TextLoader + 2
-;;@EndOfText
-;b_GCIM_EndOfText
+;	clc                ; Increment the address pointing to the 
+;	lda TextLoader + 1 ; input buffer of text to scroll.
+;	adc #1
+;	sta TextLoader + 1
+;	lda TextLoader + 2
+;	adc #0
+;	sta TextLoader + 2
+
+	inc TextLoader + 1    ; Increment the address pointing to the 
+	bne b_GCIM_SkipHiByte ; input buffer of text to scroll.
+	inc TextLoader + 2
+b_GCIM_SkipHiByte
+
 	pla                ; Get the text byte back.  A = next character
-	
+
 	rts
 
-	
+
 ;===============================================================================
 ; Grab the Character definition from ROM and copy to the 
 ; 40th character position in the scrolling buffer (which is the 
 ; character set in RAM).
 ; Called once per character coarse scroll.  (Every 8th scroll)
 
-GrabCharacter
-	; Register Y has Character Code to Copy
+GrabCharacter               ; Register Y has Character Code to Copy
 	lda #0                  ; Zero the pointer to the ROM character.
 	sta CharacterLoc + 1
 	sta CharacterLoc + 2
-	
+
 	tya                     ; A = Y = character code
-	
+
 	asl                     ; x2
 	rol CharacterLoc + 2
 	asl                     ; x4
@@ -384,32 +256,13 @@ GrabCharacter
 	asl                     ; x8
 	rol CharacterLoc + 2
 	sta CharacterLoc + 1
+
 	clc                     ; Next add base address of ROM character set.
-;;  lda #$D0
 	lda #>ChrRom            ; Atari's ROM set is in a different place. $E000
 	adc CharacterLoc + 2
 	sta CharacterLoc + 2
-; Atari does not need the bank switching bit twiddling.
-;;  sei                     ; disable interrupts while we copy
-;;  lda #$33                ; make the CPU see the Character Generator ROM...
-;;  sta $01                 ; ...at $D000 by storing %00110011 into location $01
 
-	; Copy 8 bytes from the ROM character set to the RAM character set.
-	
-;;    ldy #$00   
-;;GCLoop
-;;CharacterLoc
-;;    lda $D000,y             
-;;    sta $3340,y             ; write to the RAM Charcter 40
-;;    iny
-;;    cpy #8
-;;    bne GCLoop              ; ..for low byte $00 to $FF
-;;    lda #$37                ; switch in I/O mapped registers again...
-;;    sta $01                 ; ... with %00110111 so CPU can see them
-;;    cli                     ; turn off interrupt disable flag
-;;    rts
-	
-	; Copy the 8 bytes in reverse and eliminate the CMP.
+	; Copy the 8 bytes in reverse and eliminate doing CMP.
 	
 	ldy #$07  
 b_GC_Loop
@@ -418,11 +271,6 @@ CharacterLoc ; <- Self-modifying code changes the address used below.
 	sta ChrArea+$140,y       ; write to the RAM Character + 40  (40 * 8 = 320)
 	dey
 	bpl b_GC_Loop            ; 7 to 0 positive, then FF is negative.
-	
-; Atari does not need the back switching bit twiddling.
-;;  lda #$37                ; switch in I/O mapped registers again...
-;;  sta $01                 ; ... with %00110111 so CPU can see them
-;;  cli                     ; turn off interrupt disable flag
 
 	rts
 
@@ -437,47 +285,30 @@ TextScroller
 	; -1 should be the end of string sentinel and no other character  
 	; character has the high bit set.  Therefore, the CMP is not 
 	; necessary.  Use negative flag.
-;;	cmp #255
-;;	bne @StillGoing
 	bpl b_TS_StillGoing
-	
+
 	jsr TestOff ; Restore hardware colors when the work is over.
-	
+
 	rts
 
-;;@StillGoing
-b_TS_StillGoing	
+b_TS_StillGoing
 	tay               ; Y = A = next character.
 	jsr GrabCharacter ; Load ROM image into RAM at position 40 (per Y)
 
-;;	lda #0    ; Start work with A = 0
-; Use a page 0 variable to eliminate the math on the Accumulator 
+; Using a page 0 variable to eliminate the math on the Accumulator 
 ; and an explicit comparison.  Also, no need to save A state, either.
 	lda #7
 	sta zbCounter
-	
-;;@DoNextPixel
+
 b_TS_DoNextPixel
-;;	pha                    ; Save A counter value for later.
 	jsr ScrollOverOnePixel
 
 	jsr WaitForScanLineStart; start work AFTER the scrolling line.
 	jsr TestOn ; Set new hardware colors to indicate when the work starts.
 
-;;@loop
-;;	lda #200               ; Scanline -> A
-;;	cmp $D012              ; Compare A to current raster line
-;;	bne @loop              ; Loop if raster line not reached 255
-
-;;	pla                    ; Get working A value
-;;	clc
-;;	adc #1                 ; increment.
-;;	cmp #8                 ; Has it counted 8 pixels?
-	dec zbCounter          ; Decrement.  Has it counted 8 pixels.
-;;	bne @DoNextPixel
-;	bne b_TS_DoNextPixel   ; No.  Let's shift  again.
+	dec zbCounter          ; Decrement.  Has it counted 8 pixels?
 	bpl b_TS_DoNextPixel   ; No.  Let's shift  again.
-
+	
 ;	jsr TestOff ; Restore hardware colors when the work is over.
 
 	jmp TextScroller
@@ -501,14 +332,14 @@ b_TS_DoNextPixel
 
 TestOn
 	pha           ; save so the caller is not disrupted.
-	
+
 	lda #[COLOR_GREEN+$0C]
 	sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
 	sta COLBK  ; = $D01A ; Playfield Background color - The border color
 	
 	lda #COLOR_BLACK
 	sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
-	
+
 	pla ; restore for the caller.
 	rts
 
@@ -533,10 +364,10 @@ TestOff
 
 	lda COLOR2 ; = $02C6 ; COLPF2 - Playfield 2 color (Background for ANTIC modes 2, 3, and F)
 	sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
-	
+
 	lda COLOR1 ; = $02C5 ; COLPF1 - Playfield 1 color (Text for modes 2, 3, pixels for mode F)
 	sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
-	
+
 	pla ; restore for the caller.
 	rts
 
@@ -555,7 +386,7 @@ WaitForScanLineStart
 	pla ; restore for the caller.
 	rts ; Yes.  We're there.  exit.
 
-	
+
 ;==============================================================================
 ;														SCREENWAITSCANLINE  A  
 ;==============================================================================
@@ -565,14 +396,14 @@ WaitForScanLineStart
 ;==============================================================================
 
 libScreenWaitScanLine
-	
+
 bLoopWaitScanLine
 	cmp VCOUNT           ; Does A match the scanline?
 	bne bLoopWaitScanLine ; No. Then have not reached the line.
 
 	rts ; Yes.  We're there.  exit.
 
-	
+
 ;==============================================================================
 ;															SCREENWAITFRAME  A  
 ;==============================================================================
@@ -594,8 +425,8 @@ bLoopWaitFrame
 
 	pla ; restore for the caller.
 	rts ; No.  Clock changed means frame ended.  exit.
-	
-	
+
+
 ;==============================================================================
 ;															DLI  
 ;==============================================================================
@@ -617,7 +448,7 @@ MyDLI
 	
 ;===============================================================================
 ; Let the assembler decide where the 1K character set resides.
-	
+
 	.align $0400
 
 ChrArea  ; == CHARACTER SET == someplace in RAM.
@@ -683,9 +514,8 @@ EXPLAINTHIS
 	.sb "scrolling text message.                 " ; Line 20
 
 
-
-
 ;===============================================================================
+
 	.align $0100 ; Go to next page boundary to make sure display list 
 	             ; can't cross a 1K boundary.
 
@@ -729,4 +559,3 @@ DISPLAYLIST
 ; --------------------------------------------------------------------
 	END ; finito
 
-	

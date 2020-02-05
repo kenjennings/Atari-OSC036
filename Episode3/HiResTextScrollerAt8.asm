@@ -499,10 +499,10 @@ SCREENEMPTY ; 40 blank characters.  Line 2, 14 - 25 on screen.
 
 EXPLAINTHIS
 	.sb "The green part of the screen shows when " ; line 15
-	.sb "the CPU is executing the scroll shift   " ; line 16 
-	.sb "algorithm.   The credit text above is   " ; line 17
-	.sb "declared once and used as the screen    " ; line 18
-	.sb "data you see, and the data driving the  " ; line 19
+	.sb "the CPU is executing the scroll shift   " ; line 16
+	.sb "algorithm.   The credit text is declared" ; line 17
+	.sb "once and used both as the static text   " ; line 18
+	.sb "seen above and as the data for the      " ; line 19
 	.sb "scrolling text message.                 " ; Line 20
 
 

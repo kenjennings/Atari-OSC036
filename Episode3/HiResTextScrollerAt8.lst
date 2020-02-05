@@ -2110,10 +2110,10 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/macros.asm
    499
    500 3E09			EXPLAINTHIS
    501 3E09 34 68 65 00 67 72 + 	.sb "The green part of the screen shows when " ; line 15
-   502 3E31 74 68 65 00 23 30 + 	.sb "the CPU is executing the scroll shift   " ; line 16 
-   503 3E59 61 6C 67 6F 72 69 + 	.sb "algorithm.   The credit text above is   " ; line 17
-   504 3E81 64 65 63 6C 61 72 + 	.sb "declared once and used as the screen    " ; line 18
-   505 3EA9 64 61 74 61 00 79 + 	.sb "data you see, and the data driving the  " ; line 19
+   502 3E31 74 68 65 00 23 30 + 	.sb "the CPU is executing the scroll shift   " ; line 16
+   503 3E59 61 6C 67 6F 72 69 + 	.sb "algorithm.   The credit text is declared" ; line 17
+   504 3E81 6F 6E 63 65 00 61 + 	.sb "once and used both as the static text   " ; line 18
+   505 3EA9 73 65 65 6E 00 61 + 	.sb "seen above and as the data for the      " ; line 19
    506 3ED1 73 63 72 6F 6C 6C + 	.sb "scrolling text message.                 " ; Line 20
    507
    508

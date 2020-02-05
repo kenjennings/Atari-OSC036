@@ -2293,130 +2293,131 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/macros.asm
    682
    683 3E09			EXPLAINTHIS
    684 3E09 34 68 65 00 67 72 + 	.sb "The green part of the screen shows when " ; line 15
-   685 3E31 74 68 65 00 23 30 + 	.sb "the CPU is executing the scroll shift   " ; line 16 
-   686 3E59 61 6C 67 6F 72 69 + 	.sb "algorithm.   The credit text above is   " ; line 17
-   687 3E81 64 65 63 6C 61 72 + 	.sb "declared once and used as the screen    " ; line 18
-   688 3EA9 64 61 74 61 00 79 + 	.sb "data you see, and the data driving the  " ; line 19
+   685 3E31 74 68 65 00 23 30 + 	.sb "the CPU is executing the scroll shift   " ; line 16
+   686 3E59 61 6C 67 6F 72 69 + 	.sb "algorithm.   The credit text is declared" ; line 17
+   687 3E81 6F 6E 63 65 00 61 + 	.sb "once and used both as the static text   " ; line 18
+   688 3EA9 73 65 65 6E 00 61 + 	.sb "seen above and as the data for the      " ; line 19
    689 3ED1 73 63 72 6F 6C 6C + 	.sb "scrolling text message.                 " ; Line 20
    690
    691
    692
    693
-   694 				;===============================================================================
-   695 3EF9				.align $0100 ; Go to next page boundary to make sure display list 
-   696 					             ; can't cross a 1K boundary.
-   697
-   698 3F00			DISPLAYLIST
-   699 3F00-3F30> 70			.by DL_BLANK_8   ; extra 8 blank to center 25 text lines
-   700 3F01 70				.by DL_BLANK_8   ; 8 blank scan lines
-   701 3F02 30				.by DL_BLANK_4   ; 
-   702
-   703 3F03				mDL_LMS DL_TEXT_2|DL_DLI, SCREENRAM ; mode 2 text and init memory scan. Line 1
+   694
+   695 				;===============================================================================
+   696 3EF9				.align $0100 ; Go to next page boundary to make sure display list 
+   697 					             ; can't cross a 1K boundary.
+   698
+   699 3F00			DISPLAYLIST
+   700 3F00-3F30> 70			.by DL_BLANK_8   ; extra 8 blank to center 25 text lines
+   701 3F01 70				.by DL_BLANK_8   ; 8 blank scan lines
+   702 3F02 30				.by DL_BLANK_4   ; 
+   703
+   704 3F03				mDL_LMS DL_TEXT_2|DL_DLI, SCREENRAM ; mode 2 text and init memory scan. Line 1
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2|DL_DLI&$0F
     11 3F03 C2				.byte DL_TEXT_2|DL_DLI|DL_LMS
     12 3F04 00 3C			.word SCREENRAM   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   704
-   705 3F06				mDL_LMS DL_TEXT_2, SCREENEMPTY ; mode 2 text and init memory scan. Line 2.
+   705
+   706 3F06				mDL_LMS DL_TEXT_2, SCREENEMPTY ; mode 2 text and init memory scan. Line 2.
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3F06 42				.byte DL_TEXT_2|DL_LMS
     12 3F07 E0 3D			.word SCREENEMPTY   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   706
-   707 3F09				mDL_LMS DL_TEXT_2, TEXTToScroll ; mode 2 text and init memory scan. Line 3 
+   707
+   708 3F09				mDL_LMS DL_TEXT_2, TEXTToScroll ; mode 2 text and init memory scan. Line 3 
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3F09 42				.byte DL_TEXT_2|DL_LMS
     12 3F0A 28 3C			.word TEXTTOSCROLL   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   708
-   709 					.rept 11                                                   ; Lines 4 to 14.
-   710 					.BY DL_TEXT_2   
-   711 					.ENDR
-   711 					.endr
+   709
+   710 					.rept 11                                                   ; Lines 4 to 14.
+   711 					.BY DL_TEXT_2   
+   712 					.ENDR
+   712 					.endr
 Source: REPT
-   710 3F0C 02				.BY DL_TEXT_2   
-   710 3F0D 02				.BY DL_TEXT_2   
-   710 3F0E 02				.BY DL_TEXT_2   
-   710 3F0F 02				.BY DL_TEXT_2   
-   710 3F10 02				.BY DL_TEXT_2   
-   710 3F11 02				.BY DL_TEXT_2   
-   710 3F12 02				.BY DL_TEXT_2   
-   710 3F13 02				.BY DL_TEXT_2   
-   710 3F14 02				.BY DL_TEXT_2   
-   710 3F15 02				.BY DL_TEXT_2   
-   710 3F16 02				.BY DL_TEXT_2   
+   711 3F0C 02				.BY DL_TEXT_2   
+   711 3F0D 02				.BY DL_TEXT_2   
+   711 3F0E 02				.BY DL_TEXT_2   
+   711 3F0F 02				.BY DL_TEXT_2   
+   711 3F10 02				.BY DL_TEXT_2   
+   711 3F11 02				.BY DL_TEXT_2   
+   711 3F12 02				.BY DL_TEXT_2   
+   711 3F13 02				.BY DL_TEXT_2   
+   711 3F14 02				.BY DL_TEXT_2   
+   711 3F15 02				.BY DL_TEXT_2   
+   711 3F16 02				.BY DL_TEXT_2   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   712 					
-   713 3F17				mDL_LMS DL_TEXT_2, EXPLAINTHIS ; mode 2 text and init memory scan. Line 15
+   713 					
+   714 3F17				mDL_LMS DL_TEXT_2, EXPLAINTHIS ; mode 2 text and init memory scan. Line 15
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3F17 42				.byte DL_TEXT_2|DL_LMS
     12 3F18 09 3E			.word EXPLAINTHIS   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   714 						
-   715 					.rept 5                                                   ; Lines 16 to 20.
-   716 					.BY DL_TEXT_2   
-   717 					.ENDR
-   717 					.endr
+   715 						
+   716 					.rept 5                                                   ; Lines 16 to 20.
+   717 					.BY DL_TEXT_2   
+   718 					.ENDR
+   718 					.endr
 Source: REPT
-   716 3F1A 02				.BY DL_TEXT_2   
-   716 3F1B 02				.BY DL_TEXT_2   
-   716 3F1C 02				.BY DL_TEXT_2   
-   716 3F1D 02				.BY DL_TEXT_2   
-   716 3F1E 02				.BY DL_TEXT_2   
+   717 3F1A 02				.BY DL_TEXT_2   
+   717 3F1B 02				.BY DL_TEXT_2   
+   717 3F1C 02				.BY DL_TEXT_2   
+   717 3F1D 02				.BY DL_TEXT_2   
+   717 3F1E 02				.BY DL_TEXT_2   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   718 					
-   719 					.rept 5            ; keep displaying the same empty line for Lines 21 - 25
-   720 					MDL_LMS DL_TEXT_2, SCREENEMPTY 
-   721 					.ENDR
-   721 					.endr
+   719 					
+   720 					.rept 5            ; keep displaying the same empty line for Lines 21 - 25
+   721 					MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   722 					.ENDR
+   722 					.endr
 Source: REPT
-   720 3F1F				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   721 3F1F				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3F1F 42				.byte DL_TEXT_2|DL_LMS
     12 3F20 E0 3D			.word SCREENEMPTY   
-   720 3F22				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   721 3F22				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3F22 42				.byte DL_TEXT_2|DL_LMS
     12 3F23 E0 3D			.word SCREENEMPTY   
-   720 3F25				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   721 3F25				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3F25 42				.byte DL_TEXT_2|DL_LMS
     12 3F26 E0 3D			.word SCREENEMPTY   
-   720 3F28				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   721 3F28				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3F28 42				.byte DL_TEXT_2|DL_LMS
     12 3F29 E0 3D			.word SCREENEMPTY   
-   720 3F2B				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   721 3F2B				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3F2B 42				.byte DL_TEXT_2|DL_LMS
     12 3F2C E0 3D			.word SCREENEMPTY   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   722 					
-   723 3F2E				mDL_JVB DISPLAYLIST ; End.  Wait for Vertical Blank.  Restart the Display List
+   723 					
+   724 3F2E				mDL_JVB DISPLAYLIST ; End.  Wait for Vertical Blank.  Restart the Display List
 Macro: MDL_JVB [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/ANTIC.asm]
      6 3F2E 41				.byte DL_JUMP_VB
      7 3F2F 00 3F			.word DISPLAYLIST   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   724
    725
-   726 				;===============================================================================
-   727 				; Store the program start location in the Atari DOS RUN Address.
-   728 				; When DOS is done loading the executable file into memory it will 
-   729 				; automatically jump to the address placed here in DOS_RUN_ADDR.
-   730
-   731 				; DOS_RUN_ADDR =  $02e0 ; Execute at address stored here when file loading completes.
-   732
-   733 3F31				mDiskDPoke DOS_RUN_ADDR, StartScroller
+   726
+   727 				;===============================================================================
+   728 				; Store the program start location in the Atari DOS RUN Address.
+   729 				; When DOS is done loading the executable file into memory it will 
+   730 				; automatically jump to the address placed here in DOS_RUN_ADDR.
+   731
+   732 				; DOS_RUN_ADDR =  $02e0 ; Execute at address stored here when file loading completes.
+   733
+   734 3F31				mDiskDPoke DOS_RUN_ADDR, StartScroller
 Macro: MDISKDPOKE [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/macros.asm]
      4 = 3F31					DISKDPOKE_TEMP =*
      5 3F31					ORG DOS_RUN_ADDR
      6 02E0-02E1> 52 34				.word STARTSCROLLER
      7 02E2					ORG DISKDPOKE_TEMP
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP03/HiResTextScroller.asm
-   734
-   735 				; --------------------------------------------------------------------
-   736 					END ; finito
+   735
+   736 				; --------------------------------------------------------------------
+   737 					END ; finito

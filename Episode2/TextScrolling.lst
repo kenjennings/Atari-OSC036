@@ -1,0 +1,1865 @@
+mads 2.0.8
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/TextScrolling.asm
+     1 				;===============================================================================
+     2 				; 6502 assembly on Atari.
+     3 				; Built with eclipse/wudsn/atasm.
+     4 				;
+     5 				; Atari port of C64 program to horizontally scroll text on the top 
+     6 				; line of the regular text mode.  This is the assembly version of 
+     7 				; Episode 1 which was a coarse scrolling textline in BASIC.
+     8 				;
+     9 				; Yes, on the Atari you can coarse scroll using Display List LMS 
+    10 				; pointer manipulation virtually for free.  This is copying the way the 
+    11 				; C64 does coarse scrolling (redraw screen memory) with the addition of
+    12 				; moving the top line of text by going through the OS pointer to screen 
+    13 				; memory which should allow this to run on any memory configuration.
+    14 				;
+    15 				; Original C64 code that is unused or modified is commented out with two semicolons ;;
+    16 				;
+    17 				; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode2/TextScrolling.asm
+    18 				;
+    19 				; Originally from:
+    20 				; https://github.com/OldSkoolCoder/TEXTScrollers/blob/master/TextScrolling.asm
+    21 				;
+    22 				;===============================================================================
+    23 				 
+    24 				;===============================================================================
+    25 				;   ATARI SYSTEM INCLUDES
+    26 				;===============================================================================
+    27 				; Various Include files that provide equates defining 
+    28 				; registers and the values used for the registers.
+    29 				;
+    30 				; For these include files refer to 
+    31 				; https://github.com/kenjennings/Atari-Atasm-Includes
+    32 				;
+    33 					icl "ANTIC.asm" 
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/ANTIC.asm
+     1 				;===============================================================================
+     2 				; ANTIC register list
+     3 				; For Mads assembler
+     4 				; Ken Jennings
+     5 				;===============================================================================
+     6 				; Hardware Registers
+     7 				;
+     8 = D400			DMACTL = $D400 ; DMA control for display and Player/Missile graphics
+     9 = D401			CHACTL = $D401 ; Character display control
+    10 = D402			DLISTL = $D402 ; Display List Pointer (low)
+    11 = D403			DLISTH = $D403 ; Display List Pointer (high)
+    12 = D404			HSCROL = $D404 ; Horizontal Fine Scroll 0 to 16 color clocks.
+    13 = D405			VSCROL = $D405 ; Vertical Fine Scroll 0 to 16 scanlines.
+    14 = D407			PMBASE = $D407 ; Player/Missile Base Address (high) 
+    15 = D409			CHBASE = $D409 ; Character Set Base Address (high)
+    16 = D40A			WSYNC =  $D40A ; Wait for Horizontal Sync
+    17 = D40B			VCOUNT = $D40B ; (Read) Vertical Scan Line Counter
+    18 = D40C			PENH =   $D40C ; (Read) Light Pen Horizontal Position
+    19 = D40D			PENV =   $D40D ; (Read) Light Pen Vertical Position
+    20 = D40E			NMIEN =  $D40E ; Non-Maskable Interupt (NMI) Enable
+    21 = D40F			NMIRES = $D40F ; Non-Maskable Interrupt (NMI) Reset
+    22 = D40F			NMIST =  $D40F ; (Read) Non-Maskable Interrupt Status
+    23 				;
+    24 				;-------------------------------------------------------------------------------
+    25 				; Shadow Registers for Hardware Registers
+    26 				;
+    27 = 022F			SDMCTL = $022F ; DMACTL
+    28 = 0230			SDLSTL = $0230 ; DLISTL
+    29 = 0231			SDLSTH = $0231 ; DLISTH
+    30 				;
+    31 = 02F4			CHBAS = $02F4 ; CHBASE
+    32 = 02F3			CHART = $02F3 ; CHACTL
+    33 				;
+    34 = 0234			LPENH = $0234 ; (Read) PENH
+    35 = 0235			LPENV = $0235 ; (Read) PENV
+    36 				;
+    37 				;-------------------------------------------------------------------------------
+    38 				; Important Bit Positions
+    39 				;
+    40 				; DMACTL and SDMCTL - DMA control for display and Player/Missile graphics
+    41 				;
+    42 = 00DF			MASK_DL_DMA =          %11011111 ; Enable/Disable DMA to read the Display List
+    43 = 00EF			MASK_PM_RESOLUTION =   %11101111 ; Set P/M graphics DMA to 1 or 2 scan line per update  
+    44 = 00F3			MASK_PM_DMA =          %11110011 ; Enable/Disable DMA for Players/Missiles
+    45 = 00FC			MASK_PLAYFIELD_WIDTH = %11111100 ; Enable playfield display/set playfield width
+    46 				;
+    47 				; DMACTL and SDMCTL - Enable/Disable DMA to read the Display List
+    48 				;
+    49 = 0020			ENABLE_DL_DMA =  %00100000
+    50 = 0000			DISABLE_DL_DMA = %00000000  ; defining this is overkill
+    51 				;
+    52 				; DMACTL and SDMCTL - Set P/M graphics DMA to 1 or 2 scan line per update  
+    53 				;
+    54 = 0010			PM_1LINE_RESOLUTION = %00010000
+    55 = 0000			PM_2LINE_RESOLUTION = %00000000
+    56 				;
+    57 				; DMACTL and SDMCTL - Enable DMA for Players/Missiles
+    58 				;
+    59 = 0008			ENABLE_PLAYER_DMA =  %00001000
+    60 = 0004			ENABLE_MISSILE_DMA = %00000100
+    61 = 000C			ENABLE_PM_DMA =      %00001100
+    62 				;
+    63 				; DMACTL and SDMCTL - Enable playfield display/set playfield width
+    64 				;
+    65 = 0000			PLAYFIELD_DISABLE =      %00000000 ; No width is the same as no display
+    66 = 0001			PLAYFIELD_WIDTH_NARROW = %00000001 ; 32 characters/128 color clocks
+    67 = 0002			PLAYFIELD_WIDTH_NORMAL = %00000010 ; 40 characters/160 color clocks
+    68 = 0003			PLAYFIELD_WIDTH_WIDE =   %00000011 ; 48 characters/192 color clocks (176 visible)
+    69 				;
+    70 				; CHACTL - Character display control
+    71 				;
+    72 = 00FB			MASK_CHACTL_REFLECT = %11111011 ; Enable/Disable vertical reflect
+    73 = 00FD			MASK_CHACTL_INVERSE = %11111101 ; Enable/Disable characters with high bit set displayed as inverse 
+    74 = 00FE			MASK_CHACTL_BLANK =   %11111110 ; Enable/Disable characters with high bit set displayed as blank space
+    75 				;
+    76 				; CHACTL - Enable character display options
+    77 				; 
+    78 = 0004			CHACTL_REFLECT = %00000100 ; Enable vertical reflect
+    79 = 0002			CHACTL_INVERSE = %00000010 ; Enable inverse display for characters with high bit set
+    80 = 0001			CHACTL_BLANK =   %00000001 ; Enable blank display for characters with high bit set
+    81 				;
+    82 				; NMIEN (NMIRES and NMIST) - Non-Maskable Interupt (NMI) Reset and Status
+    83 				;
+    84 = 007F			MASK_NMI_DLI =   %01111111 ; Enable/Disable Display List Interrupts
+    85 = 00BF			MASK_NMI_VBI =   %10111111 ; Enable/Disable Vertical Blank Interrupt
+    86 = 00DF			MASK_NMI_RESET = %11011111 ; Enable/Disable Reset Key Interrupt
+    87 				;
+    88 				; NMIEN (NMIRES and NMIST) - Enable Non-Maskable Interupts
+    89 				;
+    90 = 0080			NMI_DLI =   %10000000 ; Enable Display List Interrupts
+    91 = 0040			NMI_VBI =   %01000000 ; Enable Vertical Blank Interrupt
+    92 = 0020			NMI_RESET = %00100000 ; Enable Reset Key Interrupt
+    93 				;
+    94 				;=================================================
+    95 				; Display List Instructions/Options Mask
+    96 				;
+    97 = 007F			MASK_DL_DLI =     %01111111 ; Display List Interrupt on last scan line of graphics line
+    98 = 00BF			MASK_DL_LMS =     %10111111 ; Reload Memory Scan address for this graphics line
+    99 = 00DF			MASK_DL_VSCROLL = %11011111 ; Vertical scrolling for this graphics line
+   100 = 00EF			MASK_DL_HSCROLL = %11101111 ; Horizontal scrolling for this graphics line
+   101 = 00F0			MASK_DL_MODE =    %11110000 ; Text/Graphics Modes
+   102 				;
+   103 				; Display List Instruction Options
+   104 				;
+   105 = 0080			DL_DLI =     %10000000 ; Enable Display List Interrupt on last scan line of graphics line
+   106 = 0040			DL_LMS =     %01000000 ; Enable Reload Memory Scan address for this graphics line
+   107 = 0020			DL_VSCROLL = %00100000 ; Enable Vertical scrolling for this graphics line
+   108 = 0010			DL_HSCROLL = %00010000 ; Enable Horizontal scrolling for this graphics line
+   109 				;
+   110 = 000F			DL_MODE =    %00001111 ; Collection of Text/Graphics Modes
+   111 				;
+   112 				; Display List Instructions, Jump 
+   113 				;
+   114 = 0001			DL_JUMP =    $01 ; Display List jump to new address
+   115 = 0041			DL_JUMP_VB = $41 ; Display List jump to address and start Vertical Blank
+   116 				;
+   117 				; Display List Instructions, blank scan lines
+   118 				; Note that bit $80 is not part of this, so the
+   119 				; DL_DLI Instruction Option is available for 
+   120 				; the blank line instructions.
+   121 				;
+   122 = 0000			DL_BLANK_1 = $00 ; 1 Blank Scan line
+   123 = 0010			DL_BLANK_2 = $10 ; 2 Blank Scan lines
+   124 = 0020			DL_BLANK_3 = $20 ; 3 Blank Scan lines
+   125 = 0030			DL_BLANK_4 = $30 ; 4 Blank Scan lines
+   126 = 0040			DL_BLANK_5 = $40 ; 5 Blank Scan lines
+   127 = 0050			DL_BLANK_6 = $50 ; 6 Blank Scan lines
+   128 = 0060			DL_BLANK_7 = $60 ; 7 Blank Scan lines
+   129 = 0070			DL_BLANK_8 = $70 ; 8 Blank Scan lines
+   130 				;
+   131 				; Display List Instructions, Text Modes, specs for Normal width
+   132 				;
+   133 = 0002			DL_TEXT_2 = $02 ; 1.5 Color, 40 Columns X 8 Scan lines, 40 bytes/line
+   134 = 0003			DL_TEXT_3 = $03 ; 1.5 Color, 40 Columns X 10 Scan lines, 40 bytes/line
+   135 = 0004			DL_TEXT_4 = $04 ; 4/5 Color, 40 Columns X 8 Scan lines, 40 bytes/line
+   136 = 0005			DL_TEXT_5 = $05 ; 4/5 Color, 40 Columns X 16 Scan lines, 40 bytes/line
+   137 = 0006			DL_TEXT_6 = $06 ; 5 Color, 20 Columns X 8 Scan lines, 20 bytes/line
+   138 = 0007			DL_TEXT_7 = $07 ; 5 Color, 20 Columns X 16 Scan lines, 20 bytes/line
+   139 				;
+   140 				; Display List Instructions, Map Modes
+   141 				;
+   142 = 0008			DL_MAP_8 = $08 ; 4 Color, 40 Pixels x 8 Scan Lines, 10 bytes/line
+   143 = 0009			DL_MAP_9 = $09 ; 2 Color, 80 Pixels x 4 Scan Lines, 10 bytes/line
+   144 = 000A			DL_MAP_A = $0A ; 4 Color, 80 Pixels x 4 Scan Lines, 20 bytes/line
+   145 = 000B			DL_MAP_B = $0B ; 2 Color, 160 Pixels x 2 Scan Lines, 20 bytes/line
+   146 = 000C			DL_MAP_C = $0C ; 2 Color, 160 Pixels x 1 Scan Lines, 20 bytes/line
+   147 = 000D			DL_MAP_D = $0D ; 4 Color, 160 Pixels x 2 Scan Lines, 40 bytes/line
+   148 = 000E			DL_MAP_E = $0E ; 4 Color, 160 Pixels x 1 Scan Lines, 40 bytes/line
+   149 = 000F			DL_MAP_F = $0F ; 1.5 Color, 320 Pixels x 1 Scan Lines (and GTIA modes), 40 bytes/line
+   150 				;
+   151 				; Macros 
+   152 				;
+   153 				;-------------------------------------------------------------------------------
+   154 				; 																	DL_LMS 
+   155 				;-------------------------------------------------------------------------------
+   156 				; mDL_LMS <DLmode>, <Address>
+   157 				;
+   158 				; Declares data for the provided display list instruction, adds the LMS 
+   159 				; option, and then the supplied address in memory.
+   160 				;
+   161 				; Note that for validity checks it is only looking at the low nybble for
+   162 				; the graphics mode, and then it simply ORs in the LMS option.
+   163 				; This means the "mode" argument could include other options and
+   164 				; even (redundantly) the LMS.
+   165 				;-------------------------------------------------------------------------------
+   166
+   167 				.macro mDL_LMS  mode,screenMemory
+   168 					.if :0<>2
+   169 						.error "mDL_LMS: 2 arguments required, mode (value of low nybble $2 to $F), screen memory (address)."
+   170 					.endif
+   171 				
+   172 					MDL_TEMP=:mode&$0F
+   173 					.if MDL_TEMP<DL_TEXT_2
+   174 						.error "mDL_LMS: mode argument must be a value from $2 to $F."
+   175 					.endif
+   176 				
+   177 					; Byte for Mode plus LMS option.  And then the screen memory address.
+   178 					.byte :mode|DL_LMS
+   179 					.word :screenMemory   
+   180 				.endm
+   181
+   182
+   183 				;-------------------------------------------------------------------------------
+   184 				; 																	DL_JMP
+   185 				;-------------------------------------------------------------------------------
+   186 				; mDL_JMP <Address>
+   187 				;
+   188 				; Declares a JMP DL instruction with the new Display List address in memory.
+   189 				;
+   190 				;-------------------------------------------------------------------------------
+   191
+   192 				.macro mDL_JMP  screenMemory
+   193 					.if :0<>1
+   194 						.error "mDL_JMP: 1 argument required, screen memory (address)."
+   195 					.endif
+   196 				
+   197 					; Byte for JMP.  And then the screen memory address.
+   198 					.byte DL_JUMP
+   199 					.word :screenMemory   
+   200 				.endm
+   201
+   202
+   203 				;-------------------------------------------------------------------------------
+   204 				; 																	DL_JVB
+   205 				;-------------------------------------------------------------------------------
+   206 				; mDL_JVB <Address>
+   207 				;
+   208 				; Declares a JVB DL instruction (Jump Vertical Blank) with the new 
+   209 				; Display List address in memory.
+   210 				;
+   211 				;-------------------------------------------------------------------------------
+   212
+   213 				.macro mDL_JVB  dlMemory
+   214 					.if :0<>1
+   215 						.error "mDL_JVB: 1 argument required, display list memory (address)."
+   216 					.endif
+   217 				
+   218 					; Byte for JVB.  And then the display list memory address.
+   219 					.byte DL_JUMP_VB
+   220 					.word :dlMemory   
+   221 				.endm
+    34 					icl "GTIA.asm"
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/GTIA.asm
+     1 				;=================================================
+     2 				; GTIA register list
+     3 				; For Mads assembler
+     4 				; Ken Jennings
+     5 				;=================================================
+     6 				; Hardware Registers
+     7 				;
+     8 = D000			HPOSP0 = $D000 ; Player 0 Horizontal Position
+     9 = D001			HPOSP1 = $D001 ; Player 1 Horizontal Position
+    10 = D002			HPOSP2 = $D002 ; Player 2 Horizontal Position
+    11 = D003			HPOSP3 = $D003 ; Player 3 Horizontal Position
+    12 				;
+    13 = D004			HPOSM0 = $D004 ; Missile 0 Horizontal Position
+    14 = D005			HPOSM1 = $D005 ; Missile 1 Horizontal Position
+    15 = D006			HPOSM2 = $D006 ; Missile 2 Horizontal Position
+    16 = D007			HPOSM3 = $D007 ; Missile 3 Horizontal Position
+    17 				;
+    18 = D008			SIZEP0 = $D008 ; Player 0 Size
+    19 = D009			SIZEP1 = $D009 ; Player 1 Size
+    20 = D00A			SIZEP2 = $D00A ; Player 2 Size
+    21 = D00B			SIZEP3 = $D00B ; Player 3 Size
+    22 = D00C			SIZEM =  $D00C ; Missiles Sizes (2 bits per missile)
+    23 				;
+    24 = D00D			GRAFP0 = $D00D ; Player 0 Graphics Pattern
+    25 = D00E			GRAFP1 = $D00E ; Player 1 Graphics Pattern
+    26 = D00F			GRAFP2 = $D00F ; Player 2 Graphics Pattern
+    27 = D010			GRAFP3 = $D010 ; Player 3 Graphics Pattern
+    28 = D011			GRAFM =  $D011 ; Missile Graphics Pattern (2 bits per missile)
+    29 				;
+    30 = D000			M0PF = $D000 ; (Read) Missile 0 to Playfield collisions
+    31 = D001			M1PF = $D001 ; (Read) Missile 1 to Playfield collisions
+    32 = D002			M2PF = $D002 ; (Read) Missile 2 to Playfield collisions
+    33 = D003			M3PF = $D003 ; (Read) Missile 3 to Playfield collisions
+    34 				;
+    35 = D004			P0PF = $D004 ; (Read) Player 0 to Playfield collisions
+    36 = D005			P1PF = $D005 ; (Read) Player 1 to Playfield collisions
+    37 = D006			P2PF = $D006 ; (Read) Player 2 to Playfield collisions
+    38 = D007			P3PF = $D007 ; (Read) Player 3 to Playfield collisions
+    39 				;
+    40 = D008			M0PL = $D008 ; (Read) Missile 0 to Player collisions
+    41 = D009			M1PL = $D009 ; (Read) Missile 1 to Player collisions
+    42 = D00A			M2PL = $D00A ; (Read) Missile 2 to Player collisions
+    43 = D00B			M3PL = $D00B ; (Read) Missile 3 to Player collisions
+    44 				;
+    45 = D00C			P0PL = $D00C ; (Read) Player 0 to Player collisions
+    46 = D00D			P1PL = $D00D ; (Read) Player 1 to Player collisions
+    47 = D00E			P2PL = $D00E ; (Read) Player 2 to Player collisions
+    48 = D00F			P3PL = $D00F ; (Read) Player 3 to Player collisions
+    49 				;
+    50 = D012			COLPM0 = $D012 ; Player/Missile 0 color, GTIA 9-color playfield color 0 for Background
+    51 = D013			COLPM1 = $D013 ; Player/Missile 1 color, GTIA 9-color playfield color 1
+    52 = D014			COLPM2 = $D014 ; Player/Missile 2 color, GTIA 9-color playfield color 2
+    53 = D015			COLPM3 = $D015 ; Player/Missile 3 color, GTIA 9-color playfield color 3
+    54 				;
+    55 = D016			COLPF0 = $D016 ; Playfield 0 color
+    56 = D017			COLPF1 = $D017 ; Playfield 1 color
+    57 = D018			COLPF2 = $D018 ; Playfield 2 color
+    58 = D019			COLPF3 = $D019 ; Playfield 3 color (and fifth Player color)
+    59 = D01A			COLBK =  $D01A ; Playfield Background color
+    60 				;
+    61 = D010			TRIG0 =  $D010 ; (Read) Joystick 0 trigger  (0 is pressed. 1 is not pressed)
+    62 = D011			TRIG1 =  $D011 ; (Read) Joystick 1 trigger
+    63 = D012			TRIG2 =  $D012 ; (Read) Joystick 2 trigger
+    64 = D013			TRIG3 =  $D013 ; (Read) Joystick 3 trigger
+    65 				;
+    66 = D014			PAL =    $D014 ; (Read) PAL Flag
+    67 = D01B			PRIOR =  $D01B ; Control Priority, Fifth Player and GTIA modes
+    68 = D01C			VDELAY = $D01C ; Player Missile Vertical Delay
+    69 = D01D			GRACTL = $D01D ; Graphics Control, P/M DMA and joystick trigger latches
+    70 = D01E			HITCLR = $D01E ; Clear Player/Missile Collisions
+    71 				;
+    72 = D01F			CONSOL = $D01F ; (Read) Start, Select, Option console keys.
+    73 = D01F			CONSPK = $D01F ; Console speaker.
+    74 				;=================================================
+    75 				; OS Shadow Registers for Hardware Registers
+    76 				;
+    77 = 0284			STRIG0 = $0284 ; (Read) TRIG0 - Joystick 0 trigger (0 is pressed. 1 is not pressed)
+    78 = 0285			STRIG1 = $0285 ; (Read) TRIG1 - Joystick 1 trigger
+    79 = 0286			STRIG2 = $0286 ; (Read) TRIG2 - Joystick 2 trigger
+    80 = 0287			STRIG3 = $0287 ; (Read) TRIG3 - Joystick 3 trigger
+    81 				;
+    82 = 02C0			PCOLOR0 = $02C0 ; COLPM0 - Player/Missile 0 color, GTIA 9-color playfield color 0 for Background
+    83 = 02C1			PCOLOR1 = $02C1 ; COLPM1 - Player/Missile 1 color, GTIA 9-color playfield color 1
+    84 = 02C2			PCOLOR2 = $02C2 ; COLPM2 - Player/Missile 2 color, GTIA 9-color playfield color 2
+    85 = 02C3			PCOLOR3 = $02C3 ; COLPM3 - Player/Missile 3 color, GTIA 9-color playfield color 3
+    86 				;
+    87 = 02C4			COLOR0 =  $02C4 ; COLPF0 - Playfield 0 color
+    88 = 02C5			COLOR1 =  $02C5 ; COLPF1 - Playfield 1 color
+    89 = 02C6			COLOR2 =  $02C6 ; COLPF2 - Playfield 2 color (Background for ANTIC modes 2, 3, and F)
+    90 = 02C7			COLOR3 =  $02C7 ; COLPF3 - Playfield 3 color (and fifth Player color)
+    91 = 02C8			COLOR4 =  $02C8 ; COLBK  - Playfield Background color (Border for modes 2, 3, and F)
+    92 				;
+    93 = 026F			GPRIOR = $026F ; PRIOR - Control Priority, Fifth Player and GTIA modes
+    94 				;=================================================
+    95 				; Important Bit Positions
+    96 				;
+    97 				; SIZEP0 - SIZEP3
+    98 				;
+    99 = 0003			PLAYER_SIZE_BITS = %00000011
+   100 = 0000			PM_SIZE_NORMAL =   %00000000 ; One color clock per Player/Missile pixel
+   101 = 0001			PM_SIZE_DOUBLE =   %00000001 ; Two color clocks per Player/Missile pixel
+   102 = 0003			PM_SIZE_QUAD =     %00000011 ; Fopur color clocks per Player/Missile pixel
+   103 				;
+   104 				; SIZEM and GRAFM (and missile memory)
+   105 				;
+   106 = 00FC			MASK_MISSILE0_BITS = %11111100
+   107 = 00F3			MASK_MISSILE1_BITS = %11110011
+   108 = 00CF			MASK_MISSILE2_BITS = %11001111
+   109 = 003F			MASK_MISSILE3_BITS = %00111111
+   110 				;
+   111 = 0003			MISSILE0_BITS =      %00000011
+   112 = 000C			MISSILE1_BITS =      %00001100
+   113 = 0030			MISSILE2_BITS =      %00110000
+   114 = 00C0			MISSILE3_BITS =      %11000000
+   115 				; 
+   116 				; Collisions MxPF, MxPL, PxPF, PxPL
+   117 				; COLPMx or COLPFx where X is bits 0 through 3
+   118 				;
+   119 = 00FE			MASK_COLPMF0_BIT = %11111110 ; Player or Missile v Player or Playfield color 0
+   120 = 00FD			MASK_COLPMF1_BIT = %11111101 ; Player or Missile v Player or Playfield color 1
+   121 = 00FB			MASK_COLPMF2_BIT = %11111011 ; Player or Missile v Player or Playfield color 2
+   122 = 00F7			MASK_COLPMF3_BIT = %11110111 ; Player or Missile v Player or Playfield color 3
+   123 				;
+   124 = 0001			COLPMF0_BIT =      %00000001 ; Player or Missile v Player or Playfield color 0
+   125 = 0002			COLPMF1_BIT =      %00000010 ; Player or Missile v Player or Playfield color 1
+   126 = 0004			COLPMF2_BIT =      %00000100 ; Player or Missile v Player or Playfield color 2
+   127 = 0008			COLPMF3_BIT =      %00001000 ; Player or Missile v Player or Playfield color 3
+   128 				;
+   129 				; Colors Registers
+   130 				;
+   131 = 00F0			COLOR_BITS = %11110000
+   132 = 000F			LUMA_BITS =  %00001111
+   133 				;
+   134 				; PRIOR and GPRIOR - Control Priority, Fifth Player and GTIA modes
+   135 				;
+   136 = 00F0			MASK_PRIORITY =      %11110000 ; Player/Missile, Playfield priority
+   137 = 00EF			MASK_FIFTH_PLAYER =  %11101111 ; Enable/Disable Fifth Player
+   138 = 00DF			MASK_MULTICOLOR_PM = %11011111 ; Enable/Disable Player color mixing
+   139 = 003F			MASK_GTIA_MODE =     %00111111 ; Enable/Disable GTIA playfield modes
+   140 				;
+   141 = 000F			PRIORITY_BITS =      %00001111 ; Player/Missile, Playfield priority
+   142 = 0010			FIFTH_PLAYER =       %00010000 ; Enable Fifth Player
+   143 = 0020			MULTICOLOR_PM =      %00100000 ; Enable Player color mixing
+   144 				;
+   145 = 0000			GTIA_MODE_DEFAULT =  %00000000 ; Normal CTIA color interpretation
+   146 = 0040			GTIA_MODE_16_SHADE = %01000000 ; 16 shades of background color (COLBK)
+   147 = 0080			GTIA_MODE_9_COLOR =  %10000000 ; 9 colors from registers, COLPM0 is background
+   148 = 00C0			GTIA_MODE_16_COLOR = %11000000 ; 16 hues of brigntess of background color (COLBK)
+   149 				;
+   150 				; Player/Missile to Playfield priority values:
+   151 				;
+   152 				;+============+=========+=========+=========+=========+=========+
+   153 				;| Priority   | 0 0 0 1 | 0 0 1 0 | 0 1 0 0 | 1 0 0 0 | 0 0 0 0 |
+   154 				;| Bits [3:0] |  = $1   |  = $2   |  = $4   |  = $8   |  = $0*  |
+   155 				;+============+=========+=========+=========+=========+=========+
+   156 				;|        Top | PM0     | PM0     | P5/PF0  | P5/PF0  | PM0     |
+   157 				;|            | PM1     | PM1     |    PF1  |    PF1  | PM1     |
+   158 				;|            | PM2     | P5/PF0  |    PF2  | PM0     | P5/PF0  |
+   159 				;|            | PM3     |    PF1  |    PF3  | PM1     |    PF1  |
+   160 				;|            | P5/PF0  |    PF2  | PM0     | PM2     | PM2     |
+   161 				;|            |    PF1  |    PF3  | PM1     | PM3     | PM3     |
+   162 				;|            |    PF2  |  PM2    | PM2     |    PF2  |    PF2  |
+   163 				;|            |    PF3  |  PM3    | PM3     |    PF3  |    PF3  |
+   164 				;|     Bottom |  COLBK  |  COLBK  |  COLBK  |  COLBK  |  COLBK  |
+   165 				;+============+=========+=========+=========+=========+=========+
+   166 				;
+   167 				; * $0 is Special: 
+   168 				; Priority 0 results in color merging:
+   169 				; PM0/PM1 + PF0/PF1 OR together to generate different colors.
+   170 				; PM2/PM3 + PF2/PF3 OR together to generate different colors.
+   171
+   172 				;
+   173 				; VDELAY - Delay PM DMA to render 2 scan line Player data one scan line lower 
+   174 				;
+   175 = 00FE			MASK_VD_MISSILE0 = %11111110
+   176 = 00FD			MASK_VD_MISSILE1 = %11111101
+   177 = 00FB			MASK_VD_MISSILE2 = %11111011
+   178 = 00F7			MASK_VD_MISSILE3 = %11110111
+   179 = 00EF			MASK_VD_PLAYER0 =  %11101111
+   180 = 00DF			MASK_VD_PLAYER1 =  %11011111
+   181 = 00BF			MASK_VD_PLAYER2 =  %10111111
+   182 = 007F			MASK_VD_PLAYER3 =  %01111111
+   183 				;
+   184 = 0001			VD_MISSILE0 =      %00000001
+   185 = 0002			VD_MISSILE1 =      %00000010
+   186 = 0004			VD_MISSILE2 =      %00000100
+   187 = 0008			VD_MISSILE3 =      %00001000
+   188 = 0010			VD_PLAYER0 =       %00010000
+   189 = 0020			VD_PLAYER1 =       %00100000
+   190 = 0040			VD_PLAYER2 =       %01000000
+   191 = 0080			VD_PLAYER3 =       %10000000
+   192 				;
+   193 				; GRACTL - Enable/Disable Player/Missile DMA to GRAFxx registers. And latch triggers.
+   194 				;
+   195 = 00FE			MASK_ENABLE_MISSILES = %11111110 ; Enable/Disable Missile DMA to GRAFM register
+   196 = 00FD			MASK_ENABLE_PLAYERS =  %11111101 ; Enable/Disable Player DMA to GRAFPx registers
+   197 = 00FB			MASK_TRIGGER_LATCH =   %11111011 ; Enable/Disable jostick trigger latching
+   198 				;
+   199 = 0001			ENABLE_MISSILES =      %00000001 ; Enable Missile DMA to GRAFM register
+   200 = 0002			ENABLE_PLAYERS =       %00000010 ; Enable Player DMA to GRAFPx registers
+   201 = 0004			TRIGGER_LATCH =        %00000100 ; Enable joystick trigger latching
+   202 				;
+   203 				; CONSOL and CONSPK
+   204 				; 0 bit is key pressed, so AND "masking" is not really useful.
+   205 				; Better to just AND with the single bit for each of the 3 keys.
+   206 				;
+   207 = 00F8			MASK_CONSOLE_KEYS =    %11111000
+   208 = 00FE			MASK_CONSOLE_START =   %11111110 ; Start button
+   209 = 00FD			MASK_CONSOLE_SELECT =  %11111101 ; Select button
+   210 = 00FB			MASK_CONSOLE_OPTION =  %11111011 ; Option button
+   211 = 00F7			MASK_CONSOLE_SPEAKER = %11110111 ; (Write) Keyboard speaker
+   212 				;
+   213 = 0007			CONSOLE_KEYS =         %00000111 ; Capture only the function keys.
+   214 = 0001			CONSOLE_START =        %00000001 ; Start button
+   215 = 0002			CONSOLE_SELECT =       %00000010 ; Select button
+   216 = 0004			CONSOLE_OPTION =       %00000100 ; Option button
+   217 = 0008			CONSOLE_SPEAKER =      %00001000 ; (Write) Keyboard speaker
+   218
+   219 				;=================================================
+   220 				; Other Value Lists 
+   221 				;
+   222 				; Sizes in horizontal color clocks and vertical scan lines
+   223 				;
+   224 = 0080			PLAYFIELD_COLORCLOCKS_NARROW = $80 ; Color Clocks Narrow Width = 128
+   225 = 00A0			PLAYFIELD_COLORCLOCKS_NORMAL = $A0 ; Color Clocks Normal Width = 160
+   226 = 00B0			PLAYFIELD_COLORCLOCKS_WIDE =   $B0 ; Color Clocks Wide Width = 176
+   227 				;
+   228 = 0040			PLAYFIELD_LEFT_EDGE_NARROW = $40 ; First/left-most color clock horizontal position
+   229 = 0030			PLAYFIELD_LEFT_EDGE_NORMAL = $30
+   230 = 0028			PLAYFIELD_LEFT_EDGE_WIDE =   $28
+   231 				;
+   232 = 00BF			PLAYFIELD_RIGHT_EDGE_NARROW = $BF ; Last/right-most color clock horizontal position
+   233 = 00CF			PLAYFIELD_RIGHT_EDGE_NORMAL = $CF
+   234 = 00D7			PLAYFIELD_RIGHT_EDGE_WIDE =   $D7
+   235 				;
+   236 				; PMBASE offsets to Player or Missile addresses
+   237 				;
+   238 = 0180			PMADR_2LINE_MISSILES = $180 
+   239 = 0200			PMADR_2LINE_PLAYER0 =  $200
+   240 = 0280			PMADR_2LINE_PLAYER1 =  $280
+   241 = 0300			PMADR_2LINE_PLAYER2 =  $300
+   242 = 0380			PMADR_2LINE_PLAYER3 =  $380
+   243 				;
+   244 = 0300			PMADR_1LINE_MISSILES = $300
+   245 = 0400			PMADR_1LINE_PLAYER0 =  $400
+   246 = 0500			PMADR_1LINE_PLAYER1 =  $500
+   247 = 0600			PMADR_1LINE_PLAYER2 =  $600
+   248 = 0700			PMADR_1LINE_PLAYER3 =  $700
+   249 				;
+   250 				; Vertical Alignments - screen scanlines are offsets into PMADR memory locations
+   251 				;
+   252 = 0004			PM_2LINE_OVERSCAN_TOP =    $04
+   253 = 0010			PM_2LINE_NORMAL_TOP =      $10 ; For default OS 192 scan line display
+   254 = 006F			PM_2LINE_NORMAL_BOTTOM =   $6F ; For default OS 192 scan line display
+   255 = 007B			PM_2LINE_OVERSCAN_BOTTOM = $7B
+   256 				;
+   257 = 0008			PM_1LINE_OVERSCAN_TOP =    $08
+   258 = 0020			PM_1LINE_NORMAL_TOP =      $20 ; For default OS 192 scan line display
+   259 = 00DF			PM_1LINE_NORMAL_BOTTOM =   $DF ; For default OS 192 scan line display
+   260 = 00F7			PM_1LINE_OVERSCAN_BOTTOM = $F7
+   261 				;
+   262 				; Helpful Colors. (Sort of. Your TV mileage may vary.)
+   263 				;
+   264 = 0000			COLOR_GREY =         $00 ; From black to white - That averages to grey, right?
+   265 				; Some also like to think of the first color value as black.
+   266 = 0000			COLOR_BLACK =        $00
+   267 				; White is the same color as black, just brighter.
+   268 = 000F			COLOR_WHITE =        $0F
+   269
+   270 = 0010			COLOR_ORANGE1 =      $10
+   271 = 0020			COLOR_ORANGE2 =      $20
+   272 = 0030			COLOR_RED_ORANGE =   $30
+   273 = 0040			COLOR_PINK =         $40
+   274 = 0050			COLOR_PURPLE =       $50
+   275 = 0060			COLOR_PURPLE_BLUE =  $60
+   276 = 0070			COLOR_BLUE1 =        $70
+   277 = 0080			COLOR_BLUE2 =        $80
+   278 = 0090			COLOR_LITE_BLUE =    $90
+   279 = 00A0			COLOR_AQUA =         $A0
+   280 = 00B0			COLOR_BLUE_GREEN =   $B0
+   281 = 00C0			COLOR_GREEN =        $C0
+   282 = 00D0			COLOR_YELLOW_GREEN = $D0
+   283 = 00E0			COLOR_ORANGE_GREEN = $E0
+   284 = 00F0			COLOR_LITE_ORANGE =  $F0
+   285
+    35 				;	include "POKEY.asm"
+    36 				;	include "PIA.asm"
+    37 					icl "OS.asm"
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/OS.asm
+     1 				;=================================================
+     2 				; OS memory and vectors
+     3 				; For Mads assembler
+     4 				; Ken Jennings
+     5 				;=================================================
+     6
+     7 				;=================================================
+     8 				; Use the ANTIC/GTIA/POKEY/PIA files for shadow
+     9 				; register declarations.
+    10 				;=================================================
+    11
+    12 				;=================================================
+    13 				; Most of the first half of Page Zero is claimed
+    14 				; by the OS.  The second half is for the cartridge
+    15 				; ROM, with part used for the Floating point 
+    16 				; package.
+    17 				;
+    18 				; If a cartridge is not inserted then the Page Zero
+    19 				; space for the cartridge is available for any 
+    20 				; machine language program.   
+    21 				;
+    22 				; Likewise, if the floating-point package will not 
+    23 				; be used then the FP registers and working area 
+    24 				; can be treated as free for use by a machine 
+    25 				; language program.
+    26 				;=================================================
+    27
+    28 				;=================================================
+    29 				; OS and Cartridge Page 0
+    30 				;=================================================
+    31 = 0000			LINZBS = $00 ; word
+    32
+    33 = 0002			CASINI = $02 ; word, Cassette initialization vector (and trap RESET. See $09).
+    34 = 0004			RAMLO =  $04 ; word, power up memory test.  Disk boot address.
+    35
+    36 = 0006			CTAFLG = $06 ; nonzero value means Left/A cartridge present
+    37 = 0007			CTBFLG = $07 ; nonzero value means Right/B  cartridge present
+    38
+    39 = 0008			WARMST = $08 ; Warmstart flag. 0 = powerup in progress. $FF normal reset occurred.
+    40 = 0009			BOOT =   $09 ; Boot status. 0 = no boot.  
+    41 					; 1 = disk boot OK.  do reset via DOSVEC
+    42 					; 2 = cassette boot OK. do reset via CASINI
+    43 					; 3 = both successful. (trap reset via CASINI).
+    44
+    45 = 000A			DOSVEC = $0A ; word. Entry vector for DOS (actually to start DUP.SYS).
+    46 = 000C			DOSINI = $0C ; word. Init address for DOS or Cassette RUN address. (also trap RESET with this).
+    47
+    48 = 000E			APPMHI = $0E ; word. Application high memory in use.
+    49
+    50 				; POKMSK = $10 in POKEY.asm
+    51
+    52 = 0011			BRKKEY = $11 ; 0 = Break pressed.  
+    53
+    54 				; Real Time Clock incremented during the vertical blank.
+    55 				; This is three addresses $12, $13, and $14.
+    56 				; The value of $14 is incremented  every vertical blank.
+    57 				; When the value of $14 reaches $FF on the next increment it rolls 
+    58 				; over to $00 and then the value of $13 increments.
+    59 				; $14 rollover/$13 increment occurs approximately every 4.27 seconds.
+    60 				; Likewise, when the value if $13 reaches $FF and it rolls 
+    61 				; over to $00,then the value of $12 increments.
+    62 				; $13 rollover/$12 increment occurs approximately every 18.2 minutes.
+    63 				; Jiffy count / 59.92334 for seconds.
+    64 = 0012			RTCLOK =   $12 ; and $13, and $14.  
+    65 = 0014			RTCLOK60 = $14 ; incremented every jiffy/frame.
+    66
+    67 = 0015			BUFADR = $15 ; word.  temporary address of disk buffer
+    68 = 0017			ICCOMT = $17 ; CIO command.
+    69 = 0018			DSKFMS = $18 ; word. File Management System vector.
+    70 = 001A			DSKUTL = $1A ; word. Disk Utilities pointer.
+    71
+    72 = 001C			PTIMOT = $1C ; printer timeout.  approx 64 second per 60 values.
+    73 = 001D			PBPNT =  $1D ; Printer buffer pointer.  index into buffer.
+    74 = 001E			PBUFSZ = $1E ; Printer buffer size.
+    75 = 001F			PTEMP =  $1F ; Temporary printer value used by print handler.
+    76
+    77 				; Zero Page copy of CIO's IOCB
+    78 = 0020			ICHIDZ = $20 ; Handler Index
+    79 = 0021			ICDNOZ = $21 ; Device or drive number
+    80 = 0022			ICCOMZ = $22 ; Command
+    81 = 0023			ICSTAZ = $23 ; IOCB status result
+    82 = 0024			ICBALZ = $24 ; Buffer address (lo byte)
+    83 = 0025			ICBAHZ = $25 ; Buffer address (hi byte)
+    84 = 0026			ICPTLZ = $26 ; Put Byte rouotine address (lo byte)
+    85 = 0027			ICPTHZ = $27 ; Put Byte rouotine address (hi byte)
+    86 = 0028			ICBLLZ = $28 ; Buffer length (lo byte)
+    87 = 0029			ICBLHZ = $29 ; Buffer length (hi byte)
+    88 = 002A			ICAX1Z = $2A ; Aux byte 1 (open parameters)
+    89 = 002B			ICAX2Z = $2B ; Aux byte 2
+    90 = 002C			ICAX3Z = $2C ; Aux byte 3 (BASIC Note/Point)
+    91 = 002D			ICAX4Z = $2D ; Aux byte 4 (BASIC Note/Point)
+    92 = 002E			ICAX5Z = $2E ; Aux byte 5
+    93 = 002F			ICAX6Z = $2F ; Aux byte 6
+    94
+    95 = 0030			STATUS = $30 ; SIO status
+    96 = 0031			CHKSUM = $31 ; SIO data frame checksum.
+    97
+    98 = 0032			BUFRLO = $32 ; SIO and DCB address of data to send or receive (lo byte)
+    99 = 0033			BUFRHI = $33 ; SIO and DCB address of data to send or receive (hi byte)
+   100 = 0034			BFENLO = $34 ; SIO and DCB address after BUFRLO/BUFRHI  (lo byte)
+   101 = 0035			BFENHI = $35 ; SIO and DCB address after BUFRLO/BUFRHI  (hi byte)
+   102
+   103 = 0036			CRETRY = $36 ; Command frame retries.  Usually $0D.
+   104 = 0037			DRETRY = $37 ; Device retries.  Usually $01.
+   105
+   106 = 0038			BUFRFL = $38 ; Flag buffer full. $FF is full.
+   107 = 0039			RECVDN = $39 ; Flag receive done. $FF is done.
+   108 = 003A			XMTDON = $3A ; Flag transmit done. $FF is done.
+   109 = 003B			CHKSNT = $3B ; Flag checksum sent. $FF is sent. $00 is not sent.
+   110 = 003C			NOCKSM = $3C ; Flag $00 = checksum follows data.  not zero = no checksum.
+   111
+   112 = 003D			BPTR =   $3D ; Index to data in cassette buffer. 
+   113 = 003E			FTYPE =  $3E ; Gap between cassette blocks. $01 to $7F = normal. $80 to $00 = short gaps.
+   114 = 003F			FEOF =   $3F ; EOF for cassette. $00 = No EOF.  !$00 = EOF detected.
+   115 = 0040			FREQ =   $40 ; Number of beeps for cassette start.  1 = Play.  2 = Record.
+   116 = 0041			SOUNDR = $41 ; Play I/O sounds to speaker. 0 = silence.  !0 = I/O sound.
+   117
+   118 				; Critical I/O flag.  
+   119 				; Set to stop some automated timers and updates.
+   120 				;  $00 = Normal behavior. 
+   121 				; !$00 = Critical I/O mode.
+   122 				; When CRITIC is set (non-zero) the following activities change:
+   123 				; Stage 2/Deferred Vertical Blank Interrupt STOPS.
+   124 				; (Stage 1/Immediate Vertical Blank Interrupt continues.)
+   125 				; Software Timers 2, 3, 4, and 5 stop.
+   126 				; Keyboard repeat disabled.
+   127 = 0042			CRITIC = $42 ;  
+   128
+   129 = 0043			FMZSPG = $43 ; 7 bytes up to $49. Disk FMS page 0 temporary registers (below)
+   130 = 0043			ZBUFP =  $43 ; word.  Pointer to filename.
+   131 = 0045			ZDRVA =  $45 ; word. Drive pointer/sector temporary value.
+   132 = 0047			ZSBA =   $47 ; word. temporary sector pointer.
+   133 = 0049			ERRNO =  $49 ; Disk I/O error.  FMS initializes to $9F.
+   134
+   135 = 004A			CKEY =   $4A ; Cassette Cold Start to boot cassette.  Set by holding START key.
+   136 = 004B			CASSBT = $4B ; Flag Cassette Boot. 0 = cassette boot unsuccessful.
+   137
+   138 = 004C			DSTAT =  $4C ; status from S: handler. 
+   139
+   140 				; Atari's "Attract" mode.
+   141 				; After no keyboard input for several minutes the Atari OS cycles the 
+   142 				; colors to prevent CRT image burn-in.  Reset this to 0 periodically
+   143 				; to prevent the OS engaging the attract mode.
+   144 = 004D			ATRACT = $4D
+   145
+   146 				; Dark attract mask. Set to $FE/254 when attract mode is not active.
+   147 				; Set to $F6/246 when attract mode is active.  This masks the 
+   148 				; color lunminance bits to make screen colors stay below 50% 
+   149 				; brighness. 
+   150 = 004E			DRKMSK = $4E
+   151
+   152 				; Color shift mask When attract mode is on the color registers are
+   153 				; exclusive-OR's with the values in $4e and $4f  during the OS's 
+   154 				; stage two vertical blank interrupt.  (see RTCLOK)
+   155 				; When set to zero and value of DRKMSK is $f6/246, the luminance 
+   156 				; is reduced 50%. COLRSH contains the value of RTCLOK+1 which is 
+   157 				; incremented approximately each 4.27 seconds causing the colors
+   158 				; to cycle at that period of time.       
+   159 = 004F			COLRSH = $4F
+   160
+   161 = 0050			TEMP =   $50 ; S: temporary value. (write character to screen)
+   162 = 0051			HOLD1 =  $51 ; S: temporary value. (lines for Display List)
+   163
+   164 = 0052			LMARGN = $52 ; E: left margin of GR.0 text mode and text windows
+   165 = 0053			RMARGN = $53 ; E: right margin of GR.0 text mode and text windows
+   166 = 0054			ROWCRS = $54 ; S: current cursor row (Y) 
+   167 = 0055			COLCRS = $55 ; word.  S: current cursor column (X)
+   168
+   169 = 0057			DINDEX = $57 ; S: current screen text/graphics mode
+   170 = 0058			SAVMSC = $58 ; word. Address of first byte of screen memory.
+   171
+   172 = 005A			OLDROW = $5A ; Previous cursor row from $54. Used for Drawto and Fill
+   173 = 005B			OLDCOL = $5B ; word. Previous cursor column from $55/$56. Used for Drawto and Fill
+   174 = 005D			OLDCHR = $5D ; Prior value of character at cursor
+   175 = 005E			OLDADR = $5E ; word. memory location of cursor.
+   176
+   177 = 0060			NEWROW = $60 ; Destination row for Drawto and Fill.
+   178 = 0062			NEWCOL = $62 ; word. Destination column for Drawto and Fill.
+   179 = 0064			LOGCOL = $64 ; Logical line cursor column.
+   180 = 0065			ADRESS = $65 ; word. S: Temp address for Display List, copy of SAVMSC, etc.
+   181
+   182 = 0066			MLTTMP = $66 ; word. Temp value for S: and in OPEN
+   183 = 0068			SAVADR = $68 ; word. S: temporary value. 
+   184
+   185 = 006A			RAMTOP = $6A ; First page after end of usable memory.
+   186
+   187 = 006B			BUFCNT = $6B ; E: temp logical line size.
+   188 = 006C			BUFSTR = $6C ; word. E: temp value
+   189
+   190 = 006E			BITMSK = $6E ; S: bit mapping value
+   191 = 006F			SHFAMT = $6F ; S: pixel shift amount per graphics mode
+   192 = 0070			ROWAC =  $70 ; word. S: temporary row value
+   193 = 0072			COLAC =  $72 ; word. S: temporary column value
+   194
+   195 = 0074			ENDPT =  $74 ; word.  S: end point for Drawto.  Copy of DELTAR or DELTAC
+   196
+   197 = 0076			DELTAR = $76 ; S: ABS( NEWROW - ROWCRS )
+   198 = 0077			DELTAC = $77 ; word.  S: ABS( NEWCOL - COLCRS )
+   199 = 0079			ROWINC = $79 ; S: Row +/- (+1 or -1) 0 is down.  $FF is up.
+   200 = 007A			COLINC = $7A ; S: Column +/- (+1 or -1) 0 is right, $FF is left.
+   201
+   202 = 007B			SWPFLG = $7B ; S: text window swap control. 0 = graphics. $FF = text window.
+   203 = 007C			HOLDCH = $7C ; S: byte value for shifting.
+   204 = 007D			INSDAT = $7D ; S: temporary character value
+   205 = 007E			COUNTR = $7E ; word. S: Loop control for line drawing. Value of DELTAR or DELTAC.
+   206
+   207 				;=================================================
+   208 				; Cartridge-specific Page 0 - $7F to $D1
+   209 				;=================================================
+   210
+   211 				;=================================================
+   212 				; Atari BASIC/OSS BASIC XL values Page 0
+   213 				;=================================================
+   214 = 0080			LOMEM  = $80 ; word. BASIC start of memory.
+   215
+   216 = 0082			VNTP   = $82 ; word. BASIC Variable Name Table Pointer.
+   217 = 0084			VNTD   = $84 ; word. BASIC Variable Name Table End address (Dummy) 
+   218 = 0086			VVTP   = $86 ; word. BASIC Variable Value Table Pointer.
+   219
+   220 = 0088			STMTAB = $88 ; word. BASIC Start of Statements/user's BASIC program.
+   221 = 008A			STMCUR = $8A ; word. BASIC pointer to current statement.
+   222
+   223 = 008C			STARP  = $8C ; word. BASIC String and Array table pointer.
+   224 = 008E			RUNSTK = $8E ; word. BASIC Pointer to GOSUB/FOR-NEXT stack.
+   225
+   226 = 0090			MEMTP =  $90 ; word. BASIC pointer to end of user BASIC program.
+   227
+   228 = 0092			STOPLN = $92 ; word. BASIC line number where execution stopped due to Break key or error.
+   229 = 00C2			PROMPT = $C2 ; Input prompt character.
+   230
+   231 = 00C3			ERSAVE = $C3 ; BASIC error code for Stop or Trap.
+   232 = 00C8			COLOR =  $C8 ; color for Plot or Drawto. (copied to $2F)
+   233
+   234 = 00C9			PTABW =  $C9 ; BASIC tab width - number of columns between tab stops.
+   235
+   236 				;=================================================
+   237 				; OS Floating Point Library
+   238 				;=================================================
+   239 = 00D4			FR0 =    $D4 ; float.  Floating point register and USR return value to BASIC.
+   240 = 00DA			FRE =    $DA ; float.  Floating point register (extra).
+   241 = 00E0			FR1 =    $E0 ; float.  Floating point register 1.
+   242 = 00E6			FR2 =    $E6 ; float.  Floating point register 2.
+   243 = 00EC			FRX =    $EC ; Floating Point spare value
+   244 = 00ED			EEXP =   $ED ; Floating Point Exponent
+   245 = 00EE			NSIGN =  $EE ; Floating Point Sign.
+   246 = 00EF			ESIGN =  $EF ; Floating Point Sign of exponent.
+   247 = 00F0			FCHRFL = $F0 ; Flag for first character
+   248 = 00F1			DIGRT =  $F1 ; Digits to the right of the decimal.
+   249 = 00F2			CIX =    $F2 ; current character input index. Offset into INBUFF
+   250 = 00F3			INBUFF = $F3 ; word. input for text to BCD conversion.  output at LBUFF
+   251 = 00F5			ZTEMP1 = $F5 ; word. Floating point temporary register.
+   252 = 00F7			ZTEMP4 = $F7 ; word. Floating point temporary register.
+   253 = 00F9			ZTEMP3 = $F9 ; word. Floating point temporary register.
+   254 = 00FB			RADFLG = $FB ; or DEGFLG.  0 = radians.  6 = degrees.
+   255 = 00FC			FLPTR =  $FC ; word. Pointer to first Floating Point number for operation..
+   256 = 00FE			FPTR2 =  $FE ; word. Pointer to Floating Point number for operation.
+   257
+   258
+   259 				;=================================================
+   260 				; OS Page 2 
+   261 				;=================================================
+   262 = 0200			VDSLST = $0200 ; word. Display List interrupt address.
+   263
+   264 = 0202			VPRCED = $0202 ; word. Peripheral proceed line vector.
+   265 = 0204			VINTER = $0204 ; word. Peripheral interrupt vector.
+   266 = 0206			VBREAK = $0206 ; word. BRK instruction vector.
+   267
+   268 = 0208			VKEYBD = $0208 ; word. POKEY keyboard interrupt vector.
+   269 = 020A			VSERIN = $020A ; word. POKEY serial I/O receive data ready interrupt vector
+   270 = 020C			VSEROR = $020C ; word. POKEY serial I/O transmit data ready interrupt vector
+   271 = 020E			VSEROC = $020E ; word. POKEY serial bus transmit complete interrupt vector.
+   272
+   273 				; HIGH FREQUENCY POKEY TIMERS: 
+   274 				; Per Mapping The Atari  
+   275 				; (Timer 1/Channel 1 as example)
+   276 				; 
+   277 				; Store frequency base in AUDCTL/$D208/53768: 
+   278 				;    $00 = 64 kilohertz, 
+   279 				;    $01 = 15 kilohertz, 
+   280 				;    $60 = 1.79 megahertz).
+   281 				; Next, set the channel control register (AUDC1/$D201/53761). 
+   282 				; Store address of interrupt routine into VTIMR1 ($210/$211). 
+   283 				; Store 0 to STIMER/$D209/53769. 
+   284 				; Enable the interrupt:
+   285 				;    Store in POKMSK/$10 the value of POKMSK OR the interrupt number:
+   286 				;       1 = timer 1 interrupt, 
+   287 				;       2 = timer 2 interrupt, 
+   288 				;       4 = timer 4 interrupt -- no timer 3!). 
+   289 				;    Store the same value in IRQEN/$D20E/53774.
+   290 				;
+   291 				; An interrupt occurs when the timer counts down to zero. 
+   292 				; The timer is reloaded with the original value stored there, 
+   293 				; and the process begins all over again.
+   294 				;
+   295 				; The OS pushes the A register onto the stack before jumping 
+   296 				; through the vector address. 
+   297 				; X and Y are not saved. Push them on the stack if they will be used. 
+   298 				; Before RTI/return from the interrupt:
+   299 				;    PLA the X and Y from the stack if used
+   300 				;    PLA the Accumulator, and 
+   301 				;    Clear the interrupt with CLI.
+   302 = 0210			VTIMR1 = $0210 ; word. POKEY timer 1 interrupt vector.
+   303 = 0212			VTIMR2 = $0212 ; word. POKEY timer 2 interrupt vector.
+   304 = 0214			VTIMR4 = $0214 ; word. POKEY timer 4 interrupt vector.
+   305
+   306 = 0216			VIMIRQ = $0216 ; word. IRQ immediate vector.
+   307
+   308
+   309 				;=================================================
+   310 				; COUNTDOWN TIMERS
+   311 				;===============================================================
+   312 				;  TIMER    | CDTMV1  | CDTMV2  | CDTMV3   | CDTMV4  | CDTMV5  |
+   313 				;---------------------------------------------------------------
+   314 				; Decrement | stage 1 | stage 2 | stage 2  | stage 2 | stage 2 |
+   315 				; in VBI?   |         |         |          |         |         |
+   316 				;---------------------------------------------------------------
+   317 				; Interrupt | CDTMA1  | CDTMA2  |          |         |         |
+   318 				; Vector?   |         |         |          |         |         |
+   319 				;---------------------------------------------------------------
+   320 				; Countdown |         |         | CDTMF3   | CDTMF4  | CDTMF5  |
+   321 				; Flag?     |         |         |          |         |         |
+   322 				;---------------------------------------------------------------
+   323 				; OS use?   | I/O     |  no     | cassette |  no     |  no     |
+   324 				;           | timing  |         | I/O      |         |         |
+   325 				;===============================================================
+   326 = 0218			CDTMV1 = $0218 ; word. Countdown Timer Value 1.
+   327 = 021A			CDTMV2 = $021A ; word. Countdown Timer Value 2.
+   328 = 021C			CDTMV3 = $021C ; word. Countdown Timer Value 3.
+   329 = 021E			CDTMV4 = $021E ; word. Countdown Timer Value 4.
+   330 = 0220			CDTMV5 = $0220 ; word. Countdown Timer Value 5.
+   331
+   332 = 0222			VVBLKI = $0222 ; word. VBLANK immediate interrupt vector. 
+   333 = 0224			VVBLKD = $0224 ; word. VBLANK deferred interrupt vector.
+   334
+   335 = 0226			CDTMA1 = $0226 ; word. System Timer 1 vector address.
+   336 = 0228			CDTMA2 = $0228 ; word. System Timer 2 vector address.
+   337 = 022A			CDTMF3 = $022A ; Set when CDTMV3 counts down to 0.
+   338 = 022B			SRTIMR = $022B ; keyboard software repeat timer.
+   339 = 022C			CDTMF4 = $022C ; Set when CDTMV4 counts down to 0.
+   340 = 022D			INTEMP = $022D ; Temp value used by SETVBL.
+   341 = 022E			CDTMF5 = $022E ; Set when CDTMV5 counts down to 0.
+   342
+   343 				; SDMCTL = $022F in ANTIC.asm
+   344 				; SDLSTL = $0230 in ANTIC.asm
+   345 				; SSKCTL = $0232 in POKEY.asm
+   346 				; LPENH  = $0234 in ANTIC.asm
+   347 				; LPENV  = $0235 in ANTIC.asm
+   348
+   349 = 0236			BRKKY =  $0236 ; Break key interrupt vector
+   350
+   351 				; SIO Command Frame:
+   352 = 023A			CDEVIC = $023A ; SIO Bus ID number
+   353 = 023B			CCOMND = $023B ; SIO Bus command code
+   354 = 023C			CAUX1 =  $023C ; Command auxiliary byte 1
+   355 = 023D			CAUX2 =  $023D ; Command auxiliary byte 2
+   356
+   357 = 023E			TMPSIO = $023E ; SIO temporary byte
+   358 = 023F			ERRFLG = $023F ; SIO error flag (except timeout)
+   359 = 0240			DFLAGS = $0240 ; Disk flags from first byte of boot sector.
+   360 = 0241			DBSECT = $0241 ; Number of Boot sectors read.
+   361 = 0242			BOOTAD = $0242 ; word. Address of the boot loader.
+   362
+   363 = 0244			COLDST = $0244 ; Coldstart Flag. 0 = reset is warmstart.  1 = reset is coldstart.
+   364
+   365 = 0246			DSKTIM = $0246 ; Disk I/O timeout countdown.
+   366
+   367 = 0247			LINBUF = $0247 ; 40 characters. temporary buffer for screen data.
+   368
+   369 				; GPRIOR = $026F in GTIA.asm
+   370 				; PADDL0 = $0270 in POKEY.asm
+   371 				; PADDL1 = $0271 in POKEY.asm
+   372 				; PADDL2 = $0272 in POKEY.asm
+   373 				; PADDL3 = $0273 in POKEY.asm
+   374 				; PADDL4 = $0274 in POKEY.asm
+   375 				; PADDL5 = $0275 in POKEY.asm
+   376 				; PADDL6 = $0276 in POKEY.asm
+   377 				; PADDL7 = $0277 in POKEY.asm
+   378 				; STICK0 = $0278 in POKEY.asm
+   379 				; STICK1 = $0279 in POKEY.asm
+   380 				; STICK2 = $027A in POKEY.asm
+   381 				; STICK3 = $027B in POKEY.asm
+   382 				; PTRIG0 = $027C in POKEY.asm
+   383 				; PTRIG1 = $027D in POKEY.asm
+   384 				; PTRIG2 = $027E in POKEY.asm
+   385 				; PTRIG3 = $027F in POKEY.asm
+   386 				; PTRIG4 = $0280 in POKEY.asm
+   387 				; PTRIG5 = $0281 in POKEY.asm
+   388 				; PTRIG6 = $0282 in POKEY.asm
+   389 				; PTRIG7 = $0283 in POKEY.asm
+   390 				; STRIG0 = $0284 in POKEY.asm
+   391 				; STRIG1 = $0285 in POKEY.asm
+   392 				; STRIG2 = $0286 in POKEY.asm
+   393 				; STRIG3 = $0287 in POKEY.asm
+   394
+   395 = 0288			CSTAT =  $0288 ; Cassette status register.
+   396 = 0289			WMODE =  $0289 ; Cassette Write mode.  0 = read. $80 = write
+   397 = 028A			BLIM =   $028A ; Cassette Buffer Limit. character count in buffer: 0 to $80.
+   398
+   399 = 0290			TXTROW = $0290 ; E: text window cursor row.
+   400 = 0291			TXTCOL = $0291 ; word. E: text window cursor column.
+   401 = 0293			TINDEX = $0293 ; Split-screen text window graphics mode.  
+   402 = 0294			TXTMSC = $0294 ; word. Address of first byte of text window when split screen is active.
+   403 = 0296			TXTOLD = $0296 ; 6 bytes -- split screen versions of OLDROW, OLDCOL (word), OLDCHR, OLDADR (word) 
+   404 = 029C			TMPX1 =  $029C ; 4 bytes -- Temp values for disply handler.
+   405 = 02A0			DMASK =  $02A0 ; Pixel Mask per current graphics mode. 1s set for bits that correspond to pixels.
+   406 					; 11111111 -- OS Modes 0, 1, 2, 12, 13 - 1 pixel is 1 byte
+   407 					; 11110000 -- OS Modes 9, 10, 11 for GTIA - 2 pixels each byte
+   408 					; 00001111
+   409 					; 11000000 -- OS Modes 3, 5, 7, 15 - 4 pixels each byte
+   410 					; 00110000 
+   411 					; 00001100
+   412 					; 00000011
+   413 					; 10000000 -- OS modes 4, 6, 8, 14 - 8 pixels each byte
+   414 					; 01000000
+   415 					; ... up to 
+   416 					; 00000001
+   417
+   418 = 02A1			TMPLBT = $02A1 ; Temporary value for bit mask.
+   419 = 02A2			ESCFLG = $02A2 ; Set to $80 when ESC key pressed. Reset to 0 for other characters.
+   420 = 02A3			TABMAP = $02A3 ; 15 bytes (120 bits) One bit for each character in a logical line.  1 = tab set. 0 = no tab.
+   421 = 02B2			LOGMAP = $02B2 ; 4 bytes. Bits of the first 3 bytes indicate the correspoding line on screen begins a logical line. 1 = start of logical line.
+   422 = 02B6			INVFLG = $02B6 ; When set to $80, input from E: occurs in inverse video.
+   423 = 02B7			FILFLG = $02B7 ; If operation is Draw this is 0. If operation is Fill, this is !0.
+   424 = 02B8			TMPROW = $02B8 ; Temporary row from ROWCRS
+   425 = 02B9			TMPCOL = $02B9 ; word. Temporary column from COLCRS
+   426 = 02BB			SCRFLG = $02BB ; Count number of physical lines in a logical line removed from screen.
+   427 = 02BE			SHFLOK = $02BE ; $0 for lowercase. $40 for uppercase (shift). $80 for control (ctrl) 
+   428 = 02BF			BOTSCR = $02BF ; Number of rows available for printing. 24 for OS Mode 0.  4 for text windows.
+   429
+   430 				; PCOLOR0 = $02C0 in GTIA.asm
+   431 				; PCOLOR1 = $02C1 in GTIA.asm
+   432 				; PCOLOR2 = $02C2 in GTIA.asm
+   433 				; PCOLOR3 = $02C3 in GTIA.asm
+   434 				; COLOR0 =  $02C4 in GTIA.asm
+   435 				; COLOR1 =  $02C5 in GTIA.asm
+   436 				; COLOR2 =  $02C6 in GTIA.asm
+   437 				; COLOR3 =  $02C7 in GTIA.asm
+   438 				; COLOR4 =  $02C8 in GTIA.asm
+   439
+   440 				; RUNAD =   $02E0 in DOS.asm
+   441 				; INITAD =  $02E2 in DOS.asm
+   442
+   443 = 02E4			RAMSIZ = $02E4 ; Highest usable Page number (high byte)
+   444 = 02E5			MEMTOP = $02E5 ; word. Pointer to last byte usable by application. OS display data follows.
+   445 = 02E7			MEMLO =  $02E7 ; word. Pointer to start of free mememory. ($0700 default, $1CFc with DOS 2, $23DC with 850 driver)
+   446
+   447 = 02EA			DVSTAT = $02EA ; 4 bytes. Status registers for serial device status. Different for Disk vs 850.
+   448
+   449 = 02EE			CBAUDL = $02EE ; low byte cassette bps rate.
+   450 = 02EF			CBAUDH = $02EF ; high byte cassette bps rate.
+   451
+   452 = 02F0			CRSINH = $02F0 ; Cursor Inhibit.  0 = cursor on.  1 = cursor off.
+   453 = 02F1			KEYDEL = $02F1 ; Key delay counter. Starts at 3, decremented each frame until 0.
+   454 = 02F2			CH1 =    $02F2 ; Keyboard character code previously in CH/$02FC.
+   455
+   456 				; CHACT = $02F3 in ANTIC.asm
+   457 				; CHBAS = $02F4 in ANTIC.asm
+   458
+   459 = 02FA			ATACHR = $02FA ; Last value read or written at graphics cursor.  Atascii in text modes. color number in others.  
+   460 				; CH =     $02FC ; in POKEY.asm KBCODE - Internal keyboard code of last key pressed.  $FF is no key pressesd.
+   461 = 02FD			FILDAT = $02FD ; Color for the fill region.
+   462 = 02FE			DSPFLG = $02FE ; E: config for cursor control characters. 0 = normal operation. !0 = Display cursor controls instead of acting on them.
+   463 = 02FF			SSFLAG = $02FF ; Scrolling stop/start control. 0 = normal scrolling.  $FF = stop scrolling.
+   464
+   465 				;=================================================
+   466 				; OS Page 3
+   467 				;=================================================
+   468 = 0300			DDEVIC = $0300 ; Serial bus device ID. Set by Handler.
+   469 = 0301			DUNIT =  $0301 ; Device unit number. Set by user program.
+   470 = 0302			DCOMND = $0302 ; Device command set by handler or the user program.
+   471 = 0303			DSTATS = $0303 ; Status code for user program. Handler's data frame direction for SIO. 
+   472 = 0304			DBUFLO = $0304 ; word. Data buffer address.
+   473 = 0305			DBUFHI = $0305 
+   474 = 0306			DTIMLO = $0306 ; Handler timeout in (approx) seconds.
+   475 = 0308			DBYTLO = $0308 ; word. Number of bytes transferred to/from buffer.
+   476 = 0309			DBYTHI = $0309 
+   477 = 030A			DAUX1 =  $030A ; Information specific to device.  (sector number) 
+   478 = 030B			DAUX2 =  $030B ; Information specific to device.  (sector number) 
+   479
+   480 = 030C			TIMER1 = $030C ; Timer for BPS rate 
+   481 = 030E			ADDCOR = $030E ; Math correction for calculating bps rate 
+   482 = 030F			CASFLG = $030F ; SIO Cassette mode or not. 0 = standard SIO. !0 = cassette.
+   483 = 0310			TIMER2 = $0310 ; word. End timer for bps rate.
+   484 = 0312			TEMP1 =  $0312 ; word. Temporary value for SIO bps calculations.
+   485 = 0314			TEMP2 =  $0314 ; Temporary value
+   486 = 0315			TEMP3 =  $0315 ; Temporary value
+   487 = 0316			SAVIO =  $0316 ; SIO flag for bit arrival.
+   488 = 0317			TIMFLG = $0317 ; Timeout for bps rate correction.
+   489 = 0318			STACKP = $0318 ; SIO stack pointer.
+   490 = 0319			TSTAT =  $0319 ; Temporary status.
+   491
+   492 				; Handler Address Table
+   493 				; 12 entries, 3 bytes each:
+   494 				; Atascii character for device.
+   495 				; Handler address LSB/MSB.
+   496 = 031A			HATABS = $031A ; 36 bytes of handler entries, 3 bytes each.
+   497
+   498 				; CIO Block.  ** denotes commonly used fields **
+   499 = 0340			IOCB =  $0340   ; Base IO Control Block
+   500 = 0340			ICHID = IOCB+$00 ; Handler ID
+   501 = 0341			ICDNO = IOCB+$01 ; Device number
+   502 = 0342			ICCMD = IOCB+$02 ; ** CIO Command **
+   503 = 0343			ICSTA = IOCB+$03 ; CIO Status
+   504 = 0344			ICBAL = IOCB+$04 ; ** Buffer address (low) **
+   505 = 0345			ICBAH = IOCB+$05 ; ** Buffer address (high) **
+   506 = 0346			ICPTL = IOCB+$06 ; Put char routine (low)
+   507 = 0347			ICPTH = IOCB+$07 ; Put char routine (high)
+   508 = 0348			ICBLL = IOCB+$08 ; ** Buffer length (low) **
+   509 = 0349			ICBLH = IOCB+$09 ; ** Buffer length (high) **
+   510 = 034A			ICAX1 = IOCB+$0A ; ** Aux Byte 1 **
+   511 = 034B			ICAX2 = IOCB+$0B ; ** Aux Byte 2 **
+   512 = 034C			ICAX3 = IOCB+$0C ; Aux Byte 3  
+   513 = 034D			ICAX4 = IOCB+$0D ; Aux Byte 4  
+   514 = 034E			ICAX5 = IOCB+$0E ; Aux Byte 5  
+   515 = 034F			ICAX6 = IOCB+$0F ; Aux Byte 6  
+   516
+   517 = 0340			IOCB0 = IOCB  ; IOCB for channel 0
+   518 = 0350			IOCB1 = $0350 ; IOCB for channel 1
+   519 = 0360			IOCB2 = $0360 ; IOCB for channel 2
+   520 = 0370			IOCB3 = $0370 ; IOCB for channel 3
+   521 = 0380			IOCB4 = $0380 ; IOCB for channel 4
+   522 = 0390			IOCB5 = $0390 ; IOCB for channel 5
+   523 = 03A0			IOCB6 = $03A0 ; IOCB for channel 6
+   524 = 03B0			IOCB7 = $03B0 ; IOCB for channel 7
+   525
+   526 = 03C0			PRNBUF = $03C0 ; 40 bytes up to $3E7
+   527
+   528 				; CIO Common Device Commands
+   529 = 0003			CIO_OPEN =       $03
+   530 = 0005			CIO_GET_RECORD = $05
+   531 = 0007			CIO_GET_BYTES =  $07
+   532 = 0009			CIO_PUT_RECORD = $09
+   533 = 000B			CIO_PUT_BYTES =  $0B
+   534 = 000C			CIO_CLOSE =      $0C
+   535 = 000D			CIO_STATUS =     $0D
+   536 = 000E			CIO_SPECIAL =    $0E
+   537
+   538 				; CIO Device Commands for D:
+   539 = 0020			CIO_D_RENAME =      $20 ; Rename a file
+   540 = 0021			CIO_D_DELETE =      $21 ; Delete the named file
+   541 = 0023			CIO_D_LOCK =        $23 ; Lock/protect the file
+   542 = 0024			CIO_D_UNLOCK =      $24 ; unlock/unprotect the file
+   543
+   544 = 0025			CIO_D_POINT =       $25 ; Move to sector/byte position
+   545 = 0026			CIO_D_NOTE =        $26 ; Get current sector/byte position
+   546
+   547 = 0027			CIO_D_FILELEN =     $27 ; Get file length
+   548 = 0029			CIO_D_CD_MYDOS =    $29 ; MyDos cd (change directory)
+   549 = 002A			CIO_D_MKDIR_MYDOS = $2A ; MyDos (and SpartaDos) mkdir (make directory)
+   550 = 002B			CIO_D_RMDIR_SPDOS = $2B ; SpartaDos rmdir (remove directory)
+   551 = 002C			CIO_D_CD_SPDOS    = $2C ; SpartaDos cd (change directory)
+   552 = 0030			CIO_D_PWD_MYDOS   = $30 ; MyDos (and SpartaDos) print/get working directory 
+   553
+   554 = 00FE			CIO_D_FORMAT =      $FE ; Format Disk
+   555
+   556 				; CIO Device Commands for S:
+   557 = 0011			CIO_S_DRAWTO = $11
+   558 = 0012			CIO_S_FILL =   $12
+   559
+   560 				; ICAX1 Common Options (OPEN modes).
+   561 = 0004			CIO_ICAX_READ      = $04
+   562 = 0008			CIO_ICAX_WRITE     = $08 ; READ + WRITE starts I/O at first byte.
+   563
+   564 				; ICAX1 Less Common Options (OPEN modes.)
+   565 = 0001			CIO_ICAX_E_FORCED     = $01 ; E: FORCED input. Usually with READ + WRITE.
+   566 = 0001			CIO_ICAX_D_APPEND     = $01 ; D: Write starts at end of file. Usually with READ + WRITE.
+   567 = 0002			CIO_ICAX_D_DIRECTORY  = $02 ; D: DIRECTORY.  Use with READ. 
+   568
+   569 = 0010			CIO_ICAX_S_TEXTWINDOW = $10 ; S: Open graphics mode with text window. Ignored for 0, 9, 10, 11.
+   570 = 0020			CIO_ICAX_S_DONOTCLEAR = $20 ; S: Suppress clear screen for graphics mode. 
+   571
+   572 				; Note: 
+   573 				; The ICAX2 value for S: is the OS graphics mode number.
+   574 				; If the mode is 0, 9, 10, or 11 the text Window option is ignored.
+   575
+   576 				;=================================================
+   577 				; OS Page 4, 5, 6   
+   578 				;=================================================
+   579 = 03FD			CASBUF = $03FD ; 128 bytes up to $047F (ends in page 4)
+   580
+   581 				; $0480 to $06FF are free if BASIC and FP are not used. 
+   582
+   583 				; $057E to $05FF
+   584 				; Various line/buffer values for FP package.
+   585
+   586 = 057E			LBPR1 =  $057E ; LBUFF Prefix 1.
+   587 = 057F			LBPR2 =  $057F ; LBUFF Prefix 2.
+   588 = 0580			LBUFF =  $0580 ; up to $5FF. Text buffer for FP/ATASCII conversions.
+   589 = 05E0			PLYARG = $05E0 ; Polynomial arguments for FP package.
+   590 = 05E6			FPSCR =  $05E6 ; to $05EB -- FP temporary use
+   591 = 05EC			FPSCR1 = $05EC ; to $05FF -- FP temporary use
+   592
+   593 				;=================================================
+   594 				; Cartridge space 
+   595 				; Pages $80 through $9F 
+   596 				; Pages $A0 through $BF 
+   597 				;=================================================
+   598 				; CART B -- Atari 800 ONLY
+   599 = 8000			CARTB =  $8000 ; Start of Cart B/Right Cart (8K)
+   600 = 9FFA			CRBSTA = $9FFA ; word. Cart B/Right Start address.
+   601 = 9FFC			CRBFLG = $9FFC ; Cart B/right present.  Copied to $7 CTBFLG
+   602 = 9FFD			CRBBTF = $9FFD ; Cart B/right Boot Option bits. $1 = boot disk. $4 = Boot cart. $80 = diagnostic cart 
+   603 = 9FFE			CRBINI = $9FFE ; word. Init address for Cart B/Right for cold boot/warm start
+   604
+   605 = A000			CARTA =  $A000 ; Start of Cart A/Left Cart (8K)
+   606 = BFFA			CRASTA = $BFFA ; word. Cart A/Left Start address.
+   607 = BFFC			CRAFLG = $BFFC ; Cart A/Left present.  Copied to $6 CTAFLG
+   608 = BFFD			CRABTF = $BFFD ; Cart A/Left Boot Option bits. $01 = boot disk. $04 = Boot cart. $80 = diagnostic cart 
+   609 = BFFE			CRAINI = $BFFE ; word. Init address for Cart A/Left for cold boot/warm start
+   610
+   611 				;=================================================
+   612 				; XL OS ROM CSET 2 Pages $CC - $CF
+   613 				;=================================================
+   614 = CC00			ROM_CSET_2 = $CC00
+   615
+   616 				;=================================================
+   617 				; OS Floating Point Package 
+   618 				; Pages $D8 through $DF 
+   619 				;=================================================
+   620 				; FP Routines References:
+   621 				;  Page 0 - $D4 to $DB  
+   622 				;  Page 5 - $57E to $5FF
+   623 				; In/out usually FR0, and LBUFF
+   624 				;=================================================
+   625 = D800			AFP =    $D800 ; Convert ATASCII to FP
+   626 = D8E6			FASC =   $D8E6 ; Convert FP to ATASCII
+   627 = D9AA			IFP =    $D9AA ; Convert Integer to FP
+   628 = D9D2			FPI =    $D9D2 ; Convert FP to Integer
+   629 = DA44			ZFRO =   $DA44 ; Zero FR0
+   630 = DA46			ZFR1 =   $DA46 ; Zero FR1
+   631 = DA60			FSUB =   $DA60 ; Subtracttion - FR0 minus FR1
+   632 = DA66			FADD =   $DA66 ; Addition - FR0 plus FR1
+   633 = DADB			FMUL =   $DADB ; Multiplication - FR0 times FR1
+   634 = DB28			FDIV =   $DB28 ; Division - FR0 divided by FR1
+   635 = DD40			PLYEVL = $DD40 ; Evaluate FP Polynomial 
+   636 = DD89			FLD0R =  $DD89 ; Load FR0 from x, Y reg pointer
+   637 = DD8D			FLD0P =  $DD8D ; Load FR0 from FLPTR
+   638 = DD98			FLD1R =  $DD98 ; Load FR1 from x, Y reg pointer
+   639 = DD9C			FLD1P =  $DD9C ; Load FR1 from FLPTR
+   640 = DDA7			FST0R =  $DDA7 ; Store FR0 to address in X, Y registers
+   641 = DDAB			FST0P =  $DDAB ; Store FR0 using FLPTR 
+   642 = DDB6			FMOVE =  $DDB6 ; Move FR0 contents to FR1
+   643 = DDC0			EXP =    $DDC0 ; Exponentiation - FP base E 
+   644 = DDCC			EXP10 =  $DDCC ; FP base 10 exponentiations
+   645 = DECD			LOG =    $DECD ; FP natural log
+   646 = DED1			LOG10 =  $DED1 ; FP base 10 log
+   647
+   648 				;=================================================
+   649 				; OS ROM CSET Pages $E0 - $E3 
+   650 				;=================================================
+   651 = E000			ROM_CSET = $E000
+   652
+   653
+   654 				;=================================================
+   655 				; OS ROM VECTORs - Page $E4
+   656 				;=================================================
+   657 				; Device handler vectors specify:
+   658 				; Open 
+   659 				; Close 
+   660 				; Get Byte 
+   661 				; Put Byte 
+   662 				; Get Special
+   663 				; JMP to handler init routine
+   664 = E400			EDITRV = $E400 ; Screen editor vector table.
+   665 = E410			SCRENV = $E410 ; Screen editor vector table.
+   666 = E420			KEYBDV = $E420 ; Screen editor vector table.
+   667 = E430			PRINTV = $E430 ; Screen editor vector table.
+   668 = E440			CASETV = $E440 ; Screen editor vector table.
+   669
+   670 = E450			DISKIV = $E450 ; JMP vector for disk handler init
+   671 = E453			DSKINV = $E453 ; JMP vector for disk handler interface.
+   672
+   673 = E456			CIOV =   $E456 ; JSR vector for CIO. All CIO operations go through this address.
+   674 = E459			SIOV =   $E459 ; JMP vector for SIO.
+   675
+   676 				; JSR to set Vertical Blank Interupt Vector/Timer values.
+   677 				; Y register is the LSB of vector/routine or timer value.
+   678 				; X register is the MSB of vector/routine or timer value.
+   679 				; A register is the number of the Vertical Blank routine to change:
+   680 				;    1 == CDTMV1 - decremented Immediate VBI Stage 1 -- JSR to CDTMA1 $0226
+   681 				;    2 == CDTMV2 - decremented Immediate VBI Stage 2 -- JSR to CDTMA2 $0228
+   682 				;    3 == CDTMV3 - decremented Immediate VBI Stage 2 -- Zero CDTMF3 $022A
+   683 				;    4 == CDTMV4 - decremented Immediate VBI Stage 2 -- Zero CDTMF4 $022C
+   684 				;    5 == CDTMV5 - decremented Immediate VBI Stage 2 -- Zero CDTMF5 $022E
+   685 				;    6 == Immediate VBI
+   686 				;    7 == deferred VBI
+   687 = E45C			SETVBV = $E45C ; JSR Vector to set timers
+   688
+   689 				; User Immediate VBI routine should end by a JMP to this address 
+   690 				; to continue the OS Vertical Blank routine. 
+   691 = E45F			SYSVBV = $E45F ; JMP to end user Immediate VBI
+   692
+   693 				; User Deferred VBI routine should end by a JMP to this address 
+   694 				; to continue the OS Vertical Blank routine. 
+   695 = E462			XITVBV = $E462 ; JMP Vector to end user Deferred VBI
+   696
+   697 = E474			WARMSV = $E474 ; Usr() here will warmstart.
+   698 = E477			COLDSV = $E477 ; Usr() here to cold boot the system.
+   699
+   700 				; After this there is not much that a user program 
+   701 				; should reference or call.  
+   702 				; I/O should be done by CIO. 
+   703 				; Vertical Blank timers should be set by calling SETVBV.
+   704 				; Everything else is subject to change or reloaction 
+   705 				; in a future operating system.
+    38 					icl "DOS.asm" 
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/DOS.asm
+     1 				;=================================================
+     2 				; DOS memory and vectors
+     3 				; For Mads assembler
+     4 				; Ken Jennings
+     5 				;=================================================
+     6 				; Misc values related to DOS and file loading
+     7 				;
+     8 = 2000			LOMEM_DOS =     $2000 ; First memory after DOS
+     9 = 3308			LOMEM_DOS_DUP = $3308 ; First memory after DOS and DUP 
+    10 				;
+    11 				; Atari RUN ADDRESS.  
+    12 				; The binary load file has a segmented structure 
+    13 				; specifying starting address, and ending address, 
+    14 				; followed by the bytes to load in that memory range.  
+    15 				; DOS observes two special addresses when loading data.
+    16 				; If the contents of the INIT address changes ater loading
+    17 				; a segment DOS calls that address immediately. If the routine
+    18 				; returns to DOS cleanly then file loading continues.
+    19 				; If the contents of the RUN address changes DOS waits until
+    20 				; all segments from the file are loaded and then calls the RUN
+    21 				; address target.
+    22 				;
+    23 = 02E0			DOS_RUN_ADDR =  $02e0 ; Execute here when file loading completes.
+    24 = 02E2			DOS_INIT_ADDR = $02e2 ; Execute here immediately then resume loading.
+    25
+    39
+    40 					icl "macros.asm"
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/macros.asm
+     1 				;===============================================================================
+     2 				;	MACROS
+     3 				;===============================================================================
+     4 				; Generic, all-purpose, helper macros to shorten repetitive 
+     5 				; tasks and make more readable code
+     6 				;===============================================================================
+     7
+     8 				;===============================================================================
+     9 				; 6502 REGISTER MAINTENANCE
+    10 				;===============================================================================
+    11 				; Various shortcuts for managing 6502 A, X, Y registers typically used 
+    12 				; when entering/exiting interrupts.  
+    13 				;
+    14 				; Also, a couple routines for entry/exit from a routine called by JSR to 
+    15 				; preserve the registers and CPU flags, so the routine does not affect
+    16 				; the caller.
+    17 				;===============================================================================
+    18
+    19 				;-------------------------------------------------------------------------------
+    20 				;                                                               REGSAVEAY A Y
+    21 				;-------------------------------------------------------------------------------
+    22 				; mRegSaveAY 
+    23 				;
+    24 				; Save A, Y CPU registers on stack. 
+    25 				;-------------------------------------------------------------------------------
+    26
+    27 				.macro mRegSaveAY 
+    28 					PHA 
+    29 					TYA 
+    30 					PHA  
+    31 				.endm 
+    32
+    33 				;-------------------------------------------------------------------------------
+    34 				;                                                               REGSAVEAX A X
+    35 				;-------------------------------------------------------------------------------
+    36 				; mRegSaveAX
+    37 				;
+    38 				; Save A, X CPU registers on stack. 
+    39 				;-------------------------------------------------------------------------------
+    40
+    41 				.macro mRegSaveAX  
+    42 					PHA 
+    43 					TXA 
+    44 					PHA  
+    45 				.endm 
+    46
+    47 				;-------------------------------------------------------------------------------
+    48 				;                                                               REGSAVEAYX A Y X
+    49 				;-------------------------------------------------------------------------------
+    50 				; mRegSaveAYX 
+    51 				;
+    52 				; Save A, Y, X CPU registers on stack. 
+    53 				;-------------------------------------------------------------------------------
+    54
+    55 				.macro mRegSaveAYX  
+    56 					PHA 
+    57 					TYA 
+    58 					PHA 
+    59 					TXA 
+    60 					PHA 
+    61 				.endm 
+    62
+    63 				;-------------------------------------------------------------------------------
+    64 				;                                                               REGRESTOREAY A Y
+    65 				;-------------------------------------------------------------------------------
+    66 				; mRegRestoreAY
+    67 				;
+    68 				; Restore A, Y CPU registers from stack. 
+    69 				;-------------------------------------------------------------------------------
+    70
+    71 				.macro mRegRestoreAY  
+    72 					PLA 
+    73 					TAY 
+    74 					PLA 
+    75 				.endm 
+    76
+    77 				;-------------------------------------------------------------------------------
+    78 				;                                                               REGRESTOREAX A X
+    79 				;-------------------------------------------------------------------------------
+    80 				; mRegRestoreAX
+    81 				;
+    82 				; Restore A, X CPU registers from stack. 
+    83 				;-------------------------------------------------------------------------------
+    84
+    85 				.macro mRegRestoreAX  
+    86 					PLA 
+    87 					TAX 
+    88 					PLA 
+    89 				.endm 
+    90
+    91 				;-------------------------------------------------------------------------------
+    92 				;                                                            REGRESTOREAYX A Y X
+    93 				;-------------------------------------------------------------------------------
+    94 				; mRegRestoreAYX 
+    95 				;
+    96 				; Restore A, Y, X CPU registers from stack. 
+    97 				;-------------------------------------------------------------------------------
+    98
+    99 				.macro mRegRestoreAYX  
+   100 					PLA 
+   101 					TAX 
+   102 					PLA 
+   103 					TAY 
+   104 					PLA 
+   105 				.endm 
+   106
+   107 				;-------------------------------------------------------------------------------
+   108 				;                                                               REGSAVE P A Y X
+   109 				;-------------------------------------------------------------------------------
+   110 				; mRegSave 
+   111 				;
+   112 				; Saves the CPU registers so subroutines do not disturb the 
+   113 				; register states and logic/flow of the main code.
+   114 				;-------------------------------------------------------------------------------
+   115
+   116 				.macro mRegSave  
+   117 					PHP 
+   118 					
+   119 					mRegSaveAYX
+   120 				.endm 
+   121
+   122 				;-------------------------------------------------------------------------------
+   123 				;                                                            REGRESTORE X Y A P
+   124 				;-------------------------------------------------------------------------------
+   125 				; mRegRestore 
+   126 				;
+   127 				; Restore A, Y, X CPU registers from stack. 
+   128 				;-------------------------------------------------------------------------------
+   129
+   130 				.macro mRegRestore  
+   131 					mRegRestoreAYX
+   132 					
+   133 					PLP 
+   134 				.endm 
+   135
+   136 				;-------------------------------------------------------------------------------
+   137 				;                                                             REGSAFERTS X Y A P
+   138 				;-------------------------------------------------------------------------------
+   139 				; mRegSafeRTS 
+   140 				;
+   141 				; Restores CPU registers for safe return from a routine 
+   142 				; that used saveRegs to preserve the CPU registers.
+   143 				;
+   144 				; Includes the RTS.
+   145 				;-------------------------------------------------------------------------------
+   146
+   147 				.macro mRegSafeRTS  
+   148 					mRegRestore
+   149 					
+   150 					RTS 
+   151 				.endm 
+   152
+   153 				;===============================================================================
+   154 				; The Basic Choice - (paper or plastic?)
+   155 				;===============================================================================
+   156 				; Load an explicit value or load from memeory?
+   157 				; This means do not use page 0 references which would 
+   158 				; be considered values less than 256, and the 
+   159 				; address would be loaded as an explit value instead.
+   160 				; (Which could be useful if you know what you're doing).
+   161 				;===============================================================================
+   162
+   163 				.macro mLDA_VM  value
+   164 					.if :0<>1
+   165 						.error "LDA_VM: 1 argument required"
+   166 					.else
+   167 						.if :value>$FF
+   168 							lda :value  ; get from memory
+   169 						.else
+   170 							lda #:value ; Get constant value
+   171 						.endif
+   172 					.endif
+   173 				.endm
+   174
+   175 				.macro mLDX_VM  value
+   176 					.if :0<>1
+   177 						.error "LDX_VM: 1 argument required"
+   178 					.else
+   179 						.if :value>$FF
+   180 							ldx :value  ; get from memory
+   181 						.else
+   182 							ldx #:value ; Get constant value
+   183 						.endif
+   184 					.endif
+   185 				.endm
+   186
+   187 				.macro mLDY_VM  value
+   188 					.if :0<>1
+   189 						.error "LDY_VM: 1 argument required"
+   190 					.else
+   191 						.if :value>$FF
+   192 							ldy :value  ; get from memory
+   193 						.else
+   194 							ldy #:value ; Get constant value
+   195 						.endif
+   196 					.endif
+   197 				.endm
+   198
+   199 				;===============================================================================
+   200 				; 16-BIT LOADS
+   201 				;===============================================================================
+   202 				; Load/move 16-bit values
+   203 				;===============================================================================
+   204
+   205 				;-------------------------------------------------------------------------------
+   206 				;                                                                LOADINT_M   A
+   207 				;-------------------------------------------------------------------------------
+   208 				; mLoadInt_M <Destination Address>, <Source Address>
+   209 				;
+   210 				; Loads the 16-bit value stored at <Source Address> into <Destination Address>.
+   211 				; 
+   212 				; Can be used to assign an address to a page 0 location for 
+   213 				; later indirect addressing.
+   214 				; In general, copies a 16-bit value to any address.   
+   215 				; Like (in C):  C = D.
+   216 				;-------------------------------------------------------------------------------
+   217
+   218 				.macro mLoadInt_M  target,source
+   219 					.IF :0<>2
+   220 						.ERROR "LoadInt_M: 2 arguments (target addr, source addr) required."
+   221 					.ELSE
+   222 						lda :source
+   223 						sta :target
+   224 						lda :source + 1
+   225 						sta :target + 1
+   226 					.ENDIF
+   227 				.endm
+   228
+   229 				;-------------------------------------------------------------------------------
+   230 				;                                                                LOADINT_V  A
+   231 				;-------------------------------------------------------------------------------
+   232 				; mLoadInt_V <Destination Address>, <Value>
+   233 				;
+   234 				; Loads the immediate 16-bit <Value> into <Destination Address>.
+   235 				; 
+   236 				; Can be used to assign an address to a page 0 location for 
+   237 				; later indirect addressing.
+   238 				; In general, stores an immediate 16-bit value at any address.
+   239 				; Like (in C):
+   240 				;  C = 12  or 
+   241 				;  C = &D
+   242 				;-------------------------------------------------------------------------------
+   243
+   244 				.macro mLoadInt_V  target,value
+   245 					.if :0<>2
+   246 						.error "LoadInt_V: 2 arguments (target addr, 16-bit value) required."
+   247 					.else
+   248 						lda #<:value
+   249 						sta :target
+   250 						lda #>:value
+   251 						sta :target + 1
+   252 					.endif
+   253 				.endm
+   254
+   255 				;===============================================================================
+   256 				; DISK SHENANIGANS
+   257 				;===============================================================================
+   258 				; The Atari executable file is a structured format.  The file contents identify
+   259 				; starting address, ending address, and the data to load.  This feature 
+   260 				; ordinarily allows the assembler to optimize the file size by describing only
+   261 				; the segments of memory needed for the program.  However, it can also be
+   262 				; abused to set values into any memory location during the program load time,
+   263 				; such as the operating system shadow registers.  This allows the act of 
+   264 				; loading the program to also perform a degree of initialization that applies
+   265 				; configuration to the system without the program expending its own code 
+   266 				; space to load and store values.
+   267 				;
+   268 				; The assembler supports this simply by changing the program address *=
+   269 				; and then declaring storage (.byte, etc.)  These macros capture the 
+   270 				; current program address in a temporary variable, set the current
+   271 				; address,  declare the supplied value, then restore the program 
+   272 				; address to the originally captured value.
+   273 				;
+   274 				; I think I recall Mac/65 would keep writes like this in the order in 
+   275 				; which they occur.  But, it seems atasm collects (optimizes) these changes 
+   276 				; of current program address into groups.  Use with caution.  Your Mileage 
+   277 				; Will Definitely Vary.
+   278 				;
+   279 				; Maximum effectiveness using disk load would enable Title screens, 
+   280 				; animation, music, etc. at known locations/events while loading the 
+   281 				; main program.  Accomplishing this with atasm requires separate builds 
+   282 				; and then concatenating the programs together.
+   283 				;===============================================================================
+   284
+   285 				;-------------------------------------------------------------------------------
+   286 				;                                                                  DiskPoke
+   287 				;-------------------------------------------------------------------------------
+   288 				; mDiskPoke <Address> <byte value>
+   289 				;
+   290 				; Utilize the Atari's structured disk format to load a BYTE value into a memory
+   291 				; location at the program load time.
+   292 				;-------------------------------------------------------------------------------
+   293
+   294 				.macro mDiskPoke  address,value
+   295 					.if :0<>2
+   296 						.error "DiskPoke: 2 arguments (target addr, byte value) required."
+   297 					.else
+   298 						.if :value>$FF
+   299 							.error "DiskPoke: Agument 2 for byte value is greater then $FF"
+   300 						.else
+   301 							DISKPOKE_TEMP =*
+   302 							ORG :address
+   303 							.byte :value
+   304 							ORG DISKPOKE_TEMP
+   305 						.endif
+   306 					.endif
+   307 				.endm 
+   308
+   309 				;-------------------------------------------------------------------------------
+   310 				;                                                                  DiskDPoke
+   311 				;-------------------------------------------------------------------------------
+   312 				; mDiskDPoke <Address> <16-bit value>
+   313 				;
+   314 				; Utilize the Atari's structured disk format to load a 16-bit WORD value into a 
+   315 				; memory location at the program load time.
+   316 				; 
+   317 				; Note that this macro cannot be used until AFTER a valid ORG address is 
+   318 				; specified for assembly. If this is not done, then ORG DISKDPOKE_TEMP
+   319 				; becomes an error.
+   320 				;-------------------------------------------------------------------------------
+   321
+   322 				.macro mDiskDPoke  address,value
+   323 					.if :0<>2
+   324 						.error "DiskDPoke: 2 arguments (target addr, integer value) required."
+   325 					.else
+   326 						DISKDPOKE_TEMP =*
+   327 						ORG :address
+   328 						.word :value
+   329 						ORG DISKDPOKE_TEMP
+   330 					.endif
+   331 				.endm 
+   332
+   333 				;-------------------------------------------------------------------------------
+   334 				;                                                                CHAINDLI A
+   335 				;-------------------------------------------------------------------------------
+   336 				; mChainDLI 
+   337 				;
+   338 				; Use after a DLI to exit and change DLI vector to new address.
+   339 				;
+   340 				; It will only update the low byte/high byte of the vector when 
+   341 				; they are different. 
+   342 				;
+   343 				; Restore Accumulator from stack.
+   344 				;
+   345 				; Exits interrupt with RTI.
+   346 				;-------------------------------------------------------------------------------
+   347
+   348 				.macro mChainDLI  ; current_DLI,next_DLI
+   349 					.if :0<>2
+   350 						.error "mChainDLI: 2 arguments required (Current DLI, Next DLI)
+   351 					.endif
+   352 				
+   353 					; If the same, then no need to change low byte.
+   354 					.if [<:current_DLI]<>[<:next_DLI] 
+   355 						lda #<:next_DLI ; Low byte of next DLI address
+   356 						sta VDSLST      ; Set vector
+   357 					.endif
+   358 				
+   359 					; If the same, then no need to change high byte.
+   360 					.if [>:current_DLI]<>[>:next_DLI] 
+   361 						lda #>:next_DLI ; High byte of next DLI address
+   362 						sta VDSLST+1    ; Set vector
+   363 					.endif
+   364 				
+   365 					pla ; restore A from stack
+   366 					rti ; DLI complete
+   367 				.endm
+   368
+    41
+    42
+    43 				;===============================================================================
+    44 				; Following is N/A for Atari.  Auto start is done by the executable file 
+    45 				; setting an address in the DOS_RUN_ADDR at load time.  See end of source.
+    46
+    47 				;; 10 SYS (2064)
+    48
+    49 				;;*=$0801
+    50
+    51 				;;	BYTE    $0E, $08, $0A, $00, $9E, $20, $28,  $32 
+    52 				;;	BYTE    $30, $36, $34, $29, $00, $00, $00
+    53
+    54 				;;*=$0810
+    55 				;;	jmp StartScrolling
+    56
+    57
+    58 				;===============================================================================
+    59 				; LOMEM_DOS_DUP = $3308 ; First usable memory after DOS and DUP 
+    60
+    61 					ORG LOMEM_DOS_DUP ; Overdoing the niceness.  Start "program" after DOS and DUP 
+    62
+    63
+    64 = 00FE			SCREENPOINTER = $FE ; a copy of SAVMSC for writing to screen memory.
+    65 = 00FC			TEXTPOINTER   = $FC ; a pointer to the text block.
+    66
+    67
+    68 				SCREENEMPTY         ; 40 blank characters. 
+    69 FFFF> 3308-3571> 00 00 + 	.sb "                                        " ; Line 2
+    70
+    71 3330			TEXTToScroll
+    72 				;;	TEXT 'this was a film from oldskoolcoder (c) jun 2019. '
+    73 				;;	TEXT 'github : https://github.com/oldskoolcoder/ '
+    74 				;;	TEXT 'twitter : @oldskoolcoder email : oldskoolcoder@outlook.com '
+    75 				;;	TEXT 'please support me on patreon @ https://www.patreon.com/'
+    76 				;;	TEXT 'oldskoolcoder thank you ;-)'
+    77 				;;	BYTE 255
+    78 3330 00 00 34 68 69 73 + 	.sb "  This was a film from OldSkoolCoder    " ; line 3
+    79 3358 00 00 00 00 00 00 + 	.sb "           (c) Jun 2019.                " ; line 4
+    80 3380 67 69 74 68 75 62 + 	.sb "github:https://github.com/oldskoolcoder/" ; line 5
+    81 33A8 00 00 00 00 00 00 + 	.sb "       twitter:@oldskoolcoder           " ; line 6
+    82 33D0 00 00 00 65 6D 61 + 	.sb "   email:oldskoolcoder@outlook.com      " ; line 7
+    83 33F8 00 00 00 00 00 30 + 	.sb "     Please support me on patreon       " ; line 8
+    84 3420 00 00 00 00 00 00 + 	.sb "      @ https://www.patreon.com/        " ; line 9
+    85 3448 00 00 00 00 00 6F + 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 10
+    86 3470 21 74 61 72 69 00 + 	.sb "Atari parody by Ken Jennings, Feb 2020. " ; line 11
+    87 3498 67 69 74 68 75 62 + 	.sb "github:https://github.com/kenjennings/At" ; line 12
+    88 34C0 61 72 69 0D 2F 33 + 	.sb "ari-OSC036/                  The End...!" ; line 13
+    89 34E8 00 00 00 00 00 00 + 	.sb "                                        " ; Line 14  ; 40 blank characters.
+    90 3510 FF				.byte 255 ; -1 does work as end of string flag for Atari and C64. (will not be displayed)
+    91
+    92
+    93 				;===============================================================================
+    94 				; Automatic start point.
+    95 				; Nicety-niceness added for Atari to write the static text version 
+    96 				; of the scrolling text lower on the screen. 
+    97 				;
+    98 				; Populating the screen using the OS SAVMSC pointer makes this usable in all 
+    99 				; memory configurations.
+   100 				; 
+   101 				; The top line will be cleared naturally by the act of coarse scrolling,
+   102 				; so the text copy routine adds 40 to the screen pointer to determine 
+   103 				; the starting position...
+   104
+   105 3511			StartScroller
+   106 3511 A5 58			lda SAVMSC            ; Get OS pointer to screen memory
+   107 3513 18				clc
+   108 3514 69 28			adc #40               ; Add 40 to start at the second line
+   109 3516 85 FE			sta SCREENPOINTER
+   110 3518 A5 59			lda SAVMSC+1          ; And take care of carry/high byte if needed.
+   111 351A 69 00			adc #0
+   112 351C 85 FF			sta SCREENPOINTER+1
+   113
+   114 					; Set up pointer to source data.  Starting at the empty line to 
+   115 					; leave a blank line after the scrolling line.
+   116 351E A9 08			lda #<SCREENEMPTY     
+   117 3520 85 FC			sta TEXTPOINTER
+   118 3522 A9 33			lda #>SCREENEMPTY     
+   119 3524 85 FD			sta TEXTPOINTER+1
+   120
+   121 3526 A0 00			ldy #0
+   122
+   123 3528			bSSLoopCopyScreen	
+   124 3528 B1 FC			lda (TEXTPOINTER),y      ; Get a byte.
+   125 352A 30 11			bmi bSSEndOfInit         ; If negative, this is the end of looping
+   126 352C 91 FE			sta (SCREENPOINTER),y    ; Write a byte
+   127
+   128 352E E6 FC			inc TEXTPOINTER          ; The data to write is more than a full page. 
+   129 3530 D0 02			bne bSSSkipTextHiByte    ; Rather than increment Y, 
+   130 3532 E6 FD			inc TEXTPOINTER+1        ; increment the pointers...
+   131 3534			bSSSkipTextHiByte
+   132
+   133 3534 E6 FE			inc SCREENPOINTER
+   134 3536 D0 02			bne bSSSkipScreenHiByte
+   135 3538 E6 FF			inc SCREENPOINTER+1
+   136 353A			bSSSkipScreenHiByte
+   137
+   138 353A 4C 28 35			jmp bSSLoopCopyScreen
+   139
+   140 353D			bSSEndOfInit	
+   141
+   142 				;===============================================================================
+   143
+   144 353D			StartScrolling
+   145 353D A0 30			ldy #<TEXTToScroll  ; Setting up the self-modifying code...
+   146 353F 8C 55 35			sty TextLoader + 1 
+   147 3542 A0 33			ldy #>TEXTToScroll 
+   148 3544 8C 56 35			sty TextLoader + 2
+   149 					
+   150 				; Skip this on Atari, since most of the screen was re-written with static text.
+   151 				;;	lda #147
+   152 				;;	jsr $ffd2
+   153
+   154 				;===============================================================================
+   155
+   156 3547			TextLooper 
+   157 				;;	ldx #0
+   158 				; Atari version is going through OS Page 0 pointer, so it needs Y instead of X.
+   159 3547 A0 00			ldy #0
+   160 					
+   161 				; Part 1, shift 39 characters of the top line to the left.
+   162 3549			TextMover
+   163 				;;	lda 1025,x
+   164 				;;	sta 1024,x
+   165 				;;	inx
+   166
+   167 3549 C8				iny
+   168 354A B1 58			lda (SAVMSC),y    ; Get from pointer + 1
+   169 354C 88				dey
+   170 354D 91 58			sta (SAVMSC),y    ; Put to pointer + 0
+   171 354F C8				iny               ; Next position
+   172 					
+   173 				;;	cpx #39
+   174 3550 C0 27			cpy #39           ; End of text line
+   175 3552 D0 F5			bne TextMover
+   176
+   177 				; Part 2, load the next new character in at the end of the line.
+   178 3554			TextLoader
+   179 3554 AD 30 33			lda TEXTToScroll  ; <-- Self-modified to change source location.
+   180 				;;	cmp #255
+   181 				;;	beq EndOfText     ; End of string is the only negative character.
+   182 3557 30 18			bmi EndOfText     ; so just use the negative flag to end.
+   183 					
+   184 				;;	sta 1063
+   185 3559 91 58			sta (SAVMSC),Y   ; From loop above, Y ended at 39, so SAVEMSC+39 = end of line.
+   186
+   187 					; Increment the pointer to text. 
+   188 				;;	clc
+   189 				;;	lda TextLoader + 1
+   190 				;;	adc #1
+   191 				;;	sta TextLoader + 1
+   192 				;;	lda TextLoader + 2
+   193 				;;	adc #0
+   194 				;;	sta TextLoader + 2
+   195
+   196 				; Actually increment by incrementing instead of adding 1.
+   197 355B EE 55 35			inc TextLoader + 1
+   198 355E D0 03			bne bTLSkipHiByte
+   199 3560 EE 56 35			inc TextLoader + 2
+   200 3563			bTLSkipHiByte
+   201
+   202 				;===============================================================================
+   203
+   204 				; CPU looping is not so good for 6502 work.
+   205 				; And we need to keep the Y intact at #39 for the indirection above.
+   206 				;;	ldy #0
+   207 				;;YLoop
+   208 				;;	ldx #192
+   209 				;;XLoop
+   210 				;;	inx
+   211 				;;	bne XLoop 
+   212 				;;	iny
+   213 				;;	bne YLoop
+   214
+   215 3563 A2 08			ldx #8                    ; 8 frames per scroll seems reasonable.
+   216
+   217 3565			bLoopWaitForNextClock
+   218 3565 A5 14			lda RTCLOK60              ; Get 1/60th (NTSC) jiffy counter
+   219
+   220 3567			bLoopForFrame
+   221 3567 C5 14			cmp RTCLOK60              ; Do while more electricity until 
+   222 3569 F0 FC			beq bLoopForFrame         ; the jiffy clock changes.
+   223
+   224 356B CA				dex                       ; count down to zero.
+   225 356C D0 F7			bne bLoopWaitForNextClock ; If not zero go wait for another frame.
+   226 					
+   227 					
+   228 356E 4C 47 35		    jmp TextLooper            ; Scroll the next character.
+   229
+   230 					
+   231 3571			EndOfText
+   232
+   233 				;;	jmp StartScrolling
+   234
+   235 3571 60			    rts
+   236
+   237
+   238 				;===============================================================================
+   239 				; Store the program start location in the Atari DOS RUN Address.
+   240 				; When DOS is done loading the executable file into memory it will 
+   241 				; automatically jump to the address placed here in DOS_RUN_ADDR.
+   242
+   243 				; DOS_RUN_ADDR =  $02e0 ; Execute at address stored here when file loading completes.
+   244
+   245 3572				mDiskDPoke DOS_RUN_ADDR, StartScroller
+Macro: MDISKDPOKE [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/macros.asm]
+     4 = 3572					DISKDPOKE_TEMP =*
+     5 3572					ORG DOS_RUN_ADDR
+     6 02E0-02E1> 11 35				.word STARTSCROLLER
+     7 02E2					ORG DISKDPOKE_TEMP
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/TextScrolling.asm
+   246
+   247 				; --------------------------------------------------------------------
+   248 					END ; finito

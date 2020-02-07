@@ -7,7 +7,7 @@ Assembly language equivalent of the BASIC scrolling program in [**Episode 1**](h
 
 ***TextScroller.asm*** - The original C64 assembly with modifications for the Atari.  C64-specific code is present and commented out.
 
-***TextScrollerAt8.asm*** - The same as the  "HiResTextScroller.asm" file, but with all the unused C64 code and some useless comments deleted.
+***TextScrollerAt8.asm*** - The same as the  "TextScroller.asm" file, but with all the unused C64 code and some useless comments deleted.
 
 ---
 

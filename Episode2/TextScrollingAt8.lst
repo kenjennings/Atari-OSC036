@@ -1,5 +1,5 @@
 mads 2.0.8
-Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/TextScrolling.asm
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/TextScrollingAt8.asm
      1 				;===============================================================================
      2 				; 6502 assembly on Atari.
      3 				; Built with eclipse/wudsn/atasm.
@@ -8,31 +8,32 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/TextScrolling.asm
      6 				; line of the regular text mode.  This is the assembly version of 
      7 				; Episode 1 which was a coarse scrolling textline in BASIC.
      8 				;
-     9 				; Yes, on the Atari you can coarse scroll using Display List LMS 
-    10 				; pointer manipulation virtually for free.  This is copying the way the 
-    11 				; C64 does coarse scrolling (redraw screen memory) with the addition of
-    12 				; moving the top line of text by going through the OS pointer to screen 
-    13 				; memory which should allow this to run on any memory configuration.
-    14 				;
-    15 				; Original C64 code that is unused or modified is commented out with two semicolons ;;
-    16 				;
-    17 				; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode2/TextScrolling.asm
-    18 				;
-    19 				; Originally from:
-    20 				; https://github.com/OldSkoolCoder/TEXTScrollers/blob/master/TextScrolling.asm
-    21 				;
-    22 				;===============================================================================
-    23 				 
-    24 				;===============================================================================
-    25 				;   ATARI SYSTEM INCLUDES
-    26 				;===============================================================================
-    27 				; Various Include files that provide equates defining 
-    28 				; registers and the values used for the registers.
-    29 				;
-    30 				; For these include files refer to 
-    31 				; https://github.com/kenjennings/Atari-Atasm-Includes
-    32 				;
-    33 					icl "ANTIC.asm" 
+     9 				; Clean version of code - C64-specific code and anything deprecated 
+    10 				; by optimization are all deleted.
+    11 				;
+    12 				; Yes, on the Atari you can coarse scroll using Display List LMS 
+    13 				; pointer manipulation virtually for free.  This is copying the way the 
+    14 				; C64 does coarse scrolling (redraw screen memory) with the addition of
+    15 				; moving the top line of text by going through the OS pointer to screen 
+    16 				; memory which should allow this to run on any memory configuration.
+    17 				;
+    18 				; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode2/TextScrolling.asm
+    19 				;
+    20 				; Originally from:
+    21 				; https://github.com/OldSkoolCoder/TEXTScrollers/blob/master/TextScrolling.asm
+    22 				;
+    23 				;===============================================================================
+    24 				 
+    25 				;===============================================================================
+    26 				;   ATARI SYSTEM INCLUDES
+    27 				;===============================================================================
+    28 				; Various Include files that provide equates defining 
+    29 				; registers and the values used for the registers.
+    30 				;
+    31 				; For these include files refer to 
+    32 				; https://github.com/kenjennings/Atari-Atasm-Includes
+    33 				;
+    34 					icl "ANTIC.asm" 
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/ANTIC.asm
      1 				;===============================================================================
      2 				; ANTIC register list
@@ -255,7 +256,7 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/ANTIC.asm
    219 					.byte DL_JUMP_VB
    220 					.word :dlMemory   
    221 				.endm
-    34 					icl "GTIA.asm"
+    35 					icl "GTIA.asm"
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/GTIA.asm
      1 				;=================================================
      2 				; GTIA register list
@@ -542,9 +543,9 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/GTIA.asm
    283 = 00E0			COLOR_ORANGE_GREEN = $E0
    284 = 00F0			COLOR_LITE_ORANGE =  $F0
    285
-    35 				;	include "POKEY.asm"
-    36 				;	include "PIA.asm"
-    37 					icl "OS.asm"
+    36 				;	include "POKEY.asm"
+    37 				;	include "PIA.asm"
+    38 					icl "OS.asm"
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/OS.asm
      1 				;=================================================
      2 				; OS memory and vectors
@@ -1251,7 +1252,7 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/OS.asm
    703 				; Vertical Blank timers should be set by calling SETVBV.
    704 				; Everything else is subject to change or reloaction 
    705 				; in a future operating system.
-    38 					icl "DOS.asm" 
+    39 					icl "DOS.asm" 
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/DOS.asm
      1 				;=================================================
      2 				; DOS memory and vectors
@@ -1278,8 +1279,8 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/DOS.asm
     23 = 02E0			DOS_RUN_ADDR =  $02e0 ; Execute here when file loading completes.
     24 = 02E2			DOS_INIT_ADDR = $02e2 ; Execute here immediately then resume loading.
     25
-    39
-    40 					icl "macros.asm"
+    40
+    41 					icl "macros.asm"
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/macros.asm
      1 				;===============================================================================
      2 				;	MACROS
@@ -1649,219 +1650,161 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/macros.asm
    366 					rti ; DLI complete
    367 				.endm
    368
-    41
     42
-    43 				;===============================================================================
-    44 				; Following is N/A for Atari.  Auto start is done by the executable file 
-    45 				; setting an address in the DOS_RUN_ADDR at load time.  See end of source.
+    43
+    44 				;===============================================================================
+    45 				; LOMEM_DOS_DUP = $3308 ; First usable memory after DOS and DUP 
     46
-    47 				;; 10 SYS (2064)
+    47 					ORG LOMEM_DOS_DUP ; Overdoing the niceness.  Start "program" after DOS and DUP 
     48
-    49 				;;*=$0801
-    50
-    51 				;;	BYTE    $0E, $08, $0A, $00, $9E, $20, $28,  $32 
-    52 				;;	BYTE    $30, $36, $34, $29, $00, $00, $00
+    49
+    50 = 00FE			SCREENPOINTER = $FE ; a copy of SAVMSC for writing to screen memory.
+    51 = 00FC			TEXTPOINTER   = $FC ; a pointer to the text block.
+    52
     53
-    54 				;;*=$0810
-    55 				;;	jmp StartScrolling
+    54 				SCREENEMPTY         ; 40 blank characters. 
+    55 FFFF> 3308-3567> 00 00 + 	.sb "                                        " ; Line 2
     56
-    57
-    58 				;===============================================================================
-    59 				; LOMEM_DOS_DUP = $3308 ; First usable memory after DOS and DUP 
-    60
-    61 					ORG LOMEM_DOS_DUP ; Overdoing the niceness.  Start "program" after DOS and DUP 
-    62
-    63
-    64 = 00FE			SCREENPOINTER = $FE ; a copy of SAVMSC for writing to screen memory.
-    65 = 00FC			TEXTPOINTER   = $FC ; a pointer to the text block.
-    66
-    67
-    68 				SCREENEMPTY         ; 40 blank characters. 
-    69 FFFF> 3308-3567> 00 00 + 	.sb "                                        " ; Line 2
-    70
-    71 3330			TEXTToScroll
-    72 				;;	TEXT 'this was a film from oldskoolcoder (c) jun 2019. '
-    73 				;;	TEXT 'github : https://github.com/oldskoolcoder/ '
-    74 				;;	TEXT 'twitter : @oldskoolcoder email : oldskoolcoder@outlook.com '
-    75 				;;	TEXT 'please support me on patreon @ https://www.patreon.com/'
-    76 				;;	TEXT 'oldskoolcoder thank you ;-)'
-    77 				;;	BYTE 255
-    78 3330 00 00 34 68 69 73 + 	.sb "  This was a film from OldSkoolCoder    " ; line 3
-    79 3358 00 00 00 00 00 00 + 	.sb "           (c) Jun 2019.                " ; line 4
-    80 3380 67 69 74 68 75 62 + 	.sb "github:https://github.com/oldskoolcoder/" ; line 5
-    81 33A8 00 00 00 00 00 00 + 	.sb "       twitter:@oldskoolcoder           " ; line 6
-    82 33D0 00 00 00 65 6D 61 + 	.sb "   email:oldskoolcoder@outlook.com      " ; line 7
-    83 33F8 00 00 00 00 00 30 + 	.sb "     Please support me on patreon       " ; line 8
-    84 3420 00 00 00 00 00 00 + 	.sb "      @ https://www.patreon.com/        " ; line 9
-    85 3448 00 00 00 00 00 6F + 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 10
-    86 3470 21 74 61 72 69 00 + 	.sb "Atari parody by Ken Jennings, Feb 2020. " ; line 11
-    87 3498 67 69 74 68 75 62 + 	.sb "github:https://github.com/kenjennings/At" ; line 12
-    88 34C0 61 72 69 0D 2F 33 + 	.sb "ari-OSC036/                  The End...!" ; line 13
-    89 34E8 00 00 00 00 00 00 + 	.sb "                                        " ; Line 14  ; 40 blank characters.
-    90 3510 FF				.byte 255 ; -1 does work as end of string flag for Atari and C64. (will not be displayed)
-    91
-    92
-    93 				;===============================================================================
-    94 				; Automatic start point.
-    95 				; Nicety-niceness added for Atari to write the static text version 
-    96 				; of the scrolling text lower on the screen. 
-    97 				;
-    98 				; Populating the screen using the OS SAVMSC pointer makes this usable in all 
-    99 				; memory configurations.
-   100 				; 
-   101 				; The top line will be cleared naturally by the act of coarse scrolling,
-   102 				; so the text copy routine adds 40 to the screen pointer to determine 
-   103 				; the starting position...
-   104
-   105 3511			StartScroller
-   106 3511 A5 58			lda SAVMSC            ; Get OS pointer to screen memory
-   107 3513 18				clc
-   108 3514 69 28			adc #40               ; Add 40 to start at the second line
-   109 3516 85 FE			sta SCREENPOINTER
-   110 3518 A5 59			lda SAVMSC+1          ; And take care of carry/high byte if needed.
-   111 351A 69 00			adc #0
-   112 351C 85 FF			sta SCREENPOINTER+1
+    57 3330			TEXTToScroll
+    58 				;;	TEXT 'this was a film from oldskoolcoder (c) jun 2019. '
+    59 				;;	TEXT 'github : https://github.com/oldskoolcoder/ '
+    60 				;;	TEXT 'twitter : @oldskoolcoder email : oldskoolcoder@outlook.com '
+    61 				;;	TEXT 'please support me on patreon @ https://www.patreon.com/'
+    62 				;;	TEXT 'oldskoolcoder thank you ;-)'
+    63 				;;	BYTE 255
+    64 3330 00 00 34 68 69 73 + 	.sb "  This was a film from OldSkoolCoder    " ; line 3
+    65 3358 00 00 00 00 00 00 + 	.sb "           (c) Jun 2019.                " ; line 4
+    66 3380 67 69 74 68 75 62 + 	.sb "github:https://github.com/oldskoolcoder/" ; line 5
+    67 33A8 00 00 00 00 00 00 + 	.sb "       twitter:@oldskoolcoder           " ; line 6
+    68 33D0 00 00 00 65 6D 61 + 	.sb "   email:oldskoolcoder@outlook.com      " ; line 7
+    69 33F8 00 00 00 00 00 30 + 	.sb "     Please support me on patreon       " ; line 8
+    70 3420 00 00 00 00 00 00 + 	.sb "      @ https://www.patreon.com/        " ; line 9
+    71 3448 00 00 00 00 00 6F + 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 10
+    72 3470 21 74 61 72 69 00 + 	.sb "Atari parody by Ken Jennings, Feb 2020. " ; line 11
+    73 3498 67 69 74 68 75 62 + 	.sb "github:https://github.com/kenjennings/At" ; line 12
+    74 34C0 61 72 69 0D 2F 33 + 	.sb "ari-OSC036/                  The End...!" ; line 13
+    75 34E8 00 00 00 00 00 00 + 	.sb "                                        " ; Line 14  ; 40 blank characters.
+    76 3510 FF				.byte 255 ; -1 does work as end of string flag for Atari and C64. (will not be displayed)
+    77
+    78
+    79 				;===============================================================================
+    80 				; Automatic start point.
+    81 				; Nicety-niceness added for Atari to write the static text version 
+    82 				; of the scrolling text lower on the screen. 
+    83 				;
+    84 				; Populating the screen using the OS SAVMSC pointer makes this usable in all 
+    85 				; memory configurations.
+    86 				; 
+    87 				; The top line will be cleared naturally by the act of coarse scrolling,
+    88 				; so the text copy routine adds 40 to the screen pointer to determine 
+    89 				; the starting position...
+    90
+    91 3511			StartScroller
+    92 3511 A5 58			lda SAVMSC            ; Get OS pointer to screen memory
+    93 3513 18				clc
+    94 3514 69 28			adc #40               ; Add 40 to start at the second line
+    95 3516 85 FE			sta SCREENPOINTER
+    96 3518 A5 59			lda SAVMSC+1          ; And take care of carry/high byte if needed.
+    97 351A 69 00			adc #0
+    98 351C 85 FF			sta SCREENPOINTER+1
+    99
+   100 					; Set up pointer to source data.  Starting at the empty line to 
+   101 					; leave a blank line after the scrolling line.
+   102 351E A9 08			lda #<SCREENEMPTY     
+   103 3520 85 FC			sta TEXTPOINTER
+   104 3522 A9 33			lda #>SCREENEMPTY     
+   105 3524 85 FD			sta TEXTPOINTER+1
+   106
+   107 3526 A0 00			ldy #0
+   108
+   109 3528			bSSLoopCopyScreen	
+   110 3528 B1 FC			lda (TEXTPOINTER),y      ; Get a byte.
+   111 352A 30 11			bmi bSSEndOfInit         ; If negative, this is the end of looping
+   112 352C 91 FE			sta (SCREENPOINTER),y    ; Write a byte
    113
-   114 					; Set up pointer to source data.  Starting at the empty line to 
-   115 					; leave a blank line after the scrolling line.
-   116 351E A9 08			lda #<SCREENEMPTY     
-   117 3520 85 FC			sta TEXTPOINTER
-   118 3522 A9 33			lda #>SCREENEMPTY     
-   119 3524 85 FD			sta TEXTPOINTER+1
-   120
-   121 3526 A0 00			ldy #0
-   122
-   123 3528			bSSLoopCopyScreen	
-   124 3528 B1 FC			lda (TEXTPOINTER),y      ; Get a byte.
-   125 352A 30 11			bmi bSSEndOfInit         ; If negative, this is the end of looping
-   126 352C 91 FE			sta (SCREENPOINTER),y    ; Write a byte
+   114 352E E6 FC			inc TEXTPOINTER          ; The data to write is more than a full page. 
+   115 3530 D0 02			bne bSSSkipTextHiByte    ; Rather than increment Y, 
+   116 3532 E6 FD			inc TEXTPOINTER+1        ; increment the pointers...
+   117 3534			bSSSkipTextHiByte
+   118
+   119 3534 E6 FE			inc SCREENPOINTER
+   120 3536 D0 02			bne bSSSkipScreenHiByte
+   121 3538 E6 FF			inc SCREENPOINTER+1
+   122 353A			bSSSkipScreenHiByte
+   123
+   124 353A 4C 28 35			jmp bSSLoopCopyScreen
+   125
+   126 353D			bSSEndOfInit	
    127
-   128 352E E6 FC			inc TEXTPOINTER          ; The data to write is more than a full page. 
-   129 3530 D0 02			bne bSSSkipTextHiByte    ; Rather than increment Y, 
-   130 3532 E6 FD			inc TEXTPOINTER+1        ; increment the pointers...
-   131 3534			bSSSkipTextHiByte
-   132
-   133 3534 E6 FE			inc SCREENPOINTER
-   134 3536 D0 02			bne bSSSkipScreenHiByte
-   135 3538 E6 FF			inc SCREENPOINTER+1
-   136 353A			bSSSkipScreenHiByte
-   137
-   138 353A 4C 28 35			jmp bSSLoopCopyScreen
-   139
-   140 353D			bSSEndOfInit	
-   141
-   142 				;===============================================================================
-   143
-   144 353D			StartScrolling
-   145 				; Not actually needed if the scoll does not repeat since the initial 
-   146 				; declaration in the code later is the address of TEXTToScroll.
-   147 				;;	ldy #<TEXTToScroll  ; Setting up the self-modifying code...
-   148 				;;	sty TextLoader + 1 
-   149 				;;	ldy #>TEXTToScroll 
-   150 				;;	sty TextLoader + 2
-   151
-   152 				; Skip this on Atari, since most of the screen was re-written with static text.
-   153 				;;	lda #147
-   154 				;;	jsr $ffd2
-   155
-   156 				;===============================================================================
-   157
-   158 353D			TextLooper 
-   159 				;;	ldx #0
-   160 				; Atari version is going through OS Page 0 pointer, so it needs Y instead of X.
-   161 353D A0 00			ldy #0
-   162 					
-   163 				; Part 1, shift 39 characters of the top line to the left.
-   164 353F			TextMover
-   165 				;;	lda 1025,x
-   166 				;;	sta 1024,x
-   167 				;;	inx
-   168
-   169 353F C8				iny
-   170 3540 B1 58			lda (SAVMSC),y    ; Get from pointer + 1
-   171 3542 88				dey
-   172 3543 91 58			sta (SAVMSC),y    ; Put to pointer + 0
-   173 3545 C8				iny               ; Next position
+   128 				;===============================================================================
+   129
+   130 353D			StartScrolling
+   131
+   132 353D			TextLooper 
+   133 353D A0 00			ldy #0  ; Atari version is going through OS Page 0 pointer, so it needs Y.
+   134
+   135 				; Part 1, shift 39 characters of the top line to the left.
+   136 353F			TextMover
+   137 353F C8				iny
+   138 3540 B1 58			lda (SAVMSC),y    ; Get from pointer + 1
+   139 3542 88				dey
+   140 3543 91 58			sta (SAVMSC),y    ; Put to pointer + 0
+   141 3545 C8				iny               ; Next position
+   142
+   143 3546 C0 27			cpy #39           ; End of text line
+   144 3548 D0 F5			bne TextMover
+   145
+   146 				; Part 2, load the next new character in at the end of the line.
+   147 354A			TextLoader
+   148 354A AD 30 33			lda TEXTToScroll  ; <-- Self-modified to change source location.
+   149 354D 30 18			bmi EndOfText     ; End char #255, so just use the negative flag to end.
+   150 					
+   151 354F 91 58			sta (SAVMSC),Y   ; From loop above, Y ended at 39, so SAVEMSC+39 = end of line.
+   152
+   153 					; Increment the pointer to text. 
+   154 3551 EE 4B 35			inc TextLoader + 1
+   155 3554 D0 03			bne bTLSkipHiByte
+   156 3556 EE 4C 35			inc TextLoader + 2
+   157 3559			bTLSkipHiByte
+   158
+   159 				;===============================================================================
+   160
+   161 				; Pause to make moving text readable.
+   162 3559 A2 0A			ldx #10                   ; 10 frames per scroll seems reasonable.
+   163
+   164 355B			bLoopWaitForNextClock
+   165 355B A5 14			lda RTCLOK60              ; Get 1/60th (NTSC) jiffy counter
+   166
+   167 355D			bLoopForFrame
+   168 355D C5 14			cmp RTCLOK60              ; Do while more electricity until 
+   169 355F F0 FC			beq bLoopForFrame         ; the jiffy clock changes.
+   170
+   171 3561 CA				dex                       ; count down to zero.
+   172 3562 D0 F7			bne bLoopWaitForNextClock ; If not zero go wait for another frame.
+   173 					
    174 					
-   175 				;;	cpx #39
-   176 3546 C0 27			cpy #39           ; End of text line
-   177 3548 D0 F5			bne TextMover
-   178
-   179 				; Part 2, load the next new character in at the end of the line.
-   180 354A			TextLoader
-   181 354A AD 30 33			lda TEXTToScroll  ; <-- Self-modified to change source location.
-   182 				;;	cmp #255
-   183 				;;	beq EndOfText     ; End of string is the only negative character.
-   184 354D 30 18			bmi EndOfText     ; so just use the negative flag to end.
-   185 					
-   186 				;;	sta 1063
-   187 354F 91 58			sta (SAVMSC),Y   ; From loop above, Y ended at 39, so SAVEMSC+39 = end of line.
-   188
-   189 					; Increment the pointer to text. 
-   190 				;;	clc
-   191 				;;	lda TextLoader + 1
-   192 				;;	adc #1
-   193 				;;	sta TextLoader + 1
-   194 				;;	lda TextLoader + 2
-   195 				;;	adc #0
-   196 				;;	sta TextLoader + 2
-   197
-   198 				; Actually increment by incrementing instead of adding 1.
-   199 3551 EE 4B 35			inc TextLoader + 1
-   200 3554 D0 03			bne bTLSkipHiByte
-   201 3556 EE 4C 35			inc TextLoader + 2
-   202 3559			bTLSkipHiByte
-   203
-   204 				;===============================================================================
-   205
-   206 				; CPU looping is not so good for 6502 work.
-   207 				; And we need to keep the Y intact at #39 for the indirection above.
-   208 				;;	ldy #0
-   209 				;;YLoop
-   210 				;;	ldx #192
-   211 				;;XLoop
-   212 				;;	inx
-   213 				;;	bne XLoop 
-   214 				;;	iny
-   215 				;;	bne YLoop
-   216
-   217 3559 A2 0A			ldx #10                   ; 10 frames per scroll seems reasonable.
-   218
-   219 355B			bLoopWaitForNextClock
-   220 355B A5 14			lda RTCLOK60              ; Get 1/60th (NTSC) jiffy counter
-   221
-   222 355D			bLoopForFrame
-   223 355D C5 14			cmp RTCLOK60              ; Do while more electricity until 
-   224 355F F0 FC			beq bLoopForFrame         ; the jiffy clock changes.
-   225
-   226 3561 CA				dex                       ; count down to zero.
-   227 3562 D0 F7			bne bLoopWaitForNextClock ; If not zero go wait for another frame.
-   228 					
-   229 					
-   230 3564 4C 3D 35		    jmp TextLooper            ; Scroll the next character.
-   231
-   232 					
-   233 3567			EndOfText
-   234
-   235 				;;	jmp StartScrolling
-   236
-   237 3567 60			    rts
-   238
-   239
-   240 				;===============================================================================
-   241 				; Store the program start location in the Atari DOS RUN Address.
-   242 				; When DOS is done loading the executable file into memory it will 
-   243 				; automatically jump to the address placed here in DOS_RUN_ADDR.
-   244
-   245 				; DOS_RUN_ADDR =  $02e0 ; Execute at address stored here when file loading completes.
-   246
-   247 3568				mDiskDPoke DOS_RUN_ADDR, StartScroller
+   175 3564 4C 3D 35		    jmp TextLooper            ; Scroll the next character.
+   176
+   177 					
+   178 3567			EndOfText
+   179
+   180 3567 60			    rts
+   181
+   182
+   183 				;===============================================================================
+   184 				; Store the program start location in the Atari DOS RUN Address.
+   185 				; When DOS is done loading the executable file into memory it will 
+   186 				; automatically jump to the address placed here in DOS_RUN_ADDR.
+   187
+   188 				; DOS_RUN_ADDR =  $02e0 ; Execute at address stored here when file loading completes.
+   189
+   190 3568				mDiskDPoke DOS_RUN_ADDR, StartScroller
 Macro: MDISKDPOKE [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/macros.asm]
      4 = 3568					DISKDPOKE_TEMP =*
      5 3568					ORG DOS_RUN_ADDR
      6 02E0-02E1> 11 35				.word STARTSCROLLER
      7 02E2					ORG DISKDPOKE_TEMP
-Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/TextScrolling.asm
-   248
-   249 				; --------------------------------------------------------------------
-   250 					END ; finito
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP02/TextScrollingAt8.asm
+   191
+   192 				; --------------------------------------------------------------------
+   193 					END ; finito

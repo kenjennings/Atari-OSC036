@@ -142,11 +142,13 @@ bSSEndOfInit
 ;===============================================================================
 
 StartScrolling
-	ldy #<TEXTToScroll  ; Setting up the self-modifying code...
-	sty TextLoader + 1 
-	ldy #>TEXTToScroll 
-	sty TextLoader + 2
-	
+; Not actually needed if the scoll does not repeat since the initial 
+; declaration in the code later is the address of TEXTToScroll.
+;;	ldy #<TEXTToScroll  ; Setting up the self-modifying code...
+;;	sty TextLoader + 1 
+;;	ldy #>TEXTToScroll 
+;;	sty TextLoader + 2
+
 ; Skip this on Atari, since most of the screen was re-written with static text.
 ;;	lda #147
 ;;	jsr $ffd2
@@ -212,7 +214,7 @@ bTLSkipHiByte
 ;;	iny
 ;;	bne YLoop
 
-	ldx #8                    ; 8 frames per scroll seems reasonable.
+	ldx #10                   ; 10 frames per scroll seems reasonable.
 
 bLoopWaitForNextClock
 	lda RTCLOK60              ; Get 1/60th (NTSC) jiffy counter

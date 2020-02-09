@@ -3,6 +3,8 @@ Atari port of OldSkoolCoder's C64 Tutorial 36, Episode 1
 
 ---
 
+[![Atari Version Episode 1](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode1/AtariScreenGrab.png "Atari Version Episode 1")](#features1)
+
 Atari BASIC program that scrolls text on the top line of the screen.
 
 In the Atari BASIC program the original C64 BASIC code is included, but commented out with REMarks.  This is usually followed on the next line by the equivalent Atari BASIC commands.   Three file formats are provided: 

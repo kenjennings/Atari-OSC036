@@ -7,6 +7,10 @@ Assembly program that implements fine scrolling by shifting bitmapped images thr
 
 In the Atari's case this is using ANTIC Mode 6 text (BASIC GRAPHICS MODE 1) which uses half the character set of a normal text mode.  Since the number of characters on the line is also half, the scrolling code shifting character set data now completes reasonably quickly in less than one video frame.
 
+***HiResTextScroller.asm*** - The original VIC-20 and C64 assembly with modifications for the Atari and optimizations.  C64/VIC-20-specific code is present and commented out.
+
+***HiResTextScrollerAt8.asm*** - The same as the  "HiResTextScroller.asm" file, but with all the unused code and some useless comments deleted.
+
 ---
 
 [Back to Home](https://github.com/kenjennings/Atari-OSC036/blob/master/README.md "Home") 

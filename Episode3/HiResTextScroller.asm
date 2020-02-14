@@ -173,7 +173,7 @@ b_SOOP_ExitScrolling
 
 	ORG LOMEM_DOS_DUP ; Overdoing the niceness.  Start "program" after DOS and DUP 
 
-	
+
 ;; ChrArea =$3200       ; User Defined Character Area
 ; Moving this for Atari, since we started waaaay up in memory.
 ; Just let the assembler supply the value later.
@@ -454,7 +454,7 @@ TextScroller
 ;;@StillGoing
 b_TS_StillGoing	
 	tay               ; Y = A = next character.
-	jsr GrabCharacter ; Load ROM image into RAM at position 40 (per Y)
+	jsr GrabCharacter ; Load ROM image into RAM at position 22 (per Y)
 
 ;;	lda #0    ; Start work with A = 0
 ; Use a page 0 variable to eliminate the math on the Accumulator 
@@ -561,7 +561,7 @@ WaitForScanLineStart
 	pla ; restore for the caller.
 	rts ; Yes.  We're there.  exit.
 
-	
+
 ;==============================================================================
 ;														SCREENWAITSCANLINE  A  
 ;==============================================================================
@@ -678,7 +678,7 @@ TEXTToScroll
 	; which also doubles as an empty line for the screen memory.
 SCREENEMPTY ; 40 blank characters.  Line 2, 14 - 25 on screen.
 	.sb "                                        " ; Line 2, 14, etc.
-	.by 255  ; -1 does work as end of string flag for Atari and C64. (will not be displayed)	
+	.by 255  ; -1 does work as end of string flag for Atari and C64. (will not be displayed)
 
 EXPLAINTHIS
 	.sb "The green part of the screen shows when " ; line 15

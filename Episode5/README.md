@@ -3,6 +3,58 @@ Atari port of OldSkoolCoders C64 Tutorial 36, Episode 5 -  ***WORK IN PROGRESS**
 
 ---
 
+***Files Ending .asm*** - The original C64 assembly with modifications for the Atari and optimizations where possible.  C64-specific code is present and commented out.
+
+***Files Ending At8.asm*** - The same as the  "*.asm" file, but with all the unused code and some useless comments deleted leaving just the working Atari parts.
+
+---
+
+***InterruptTextScroller1***
+
+[![Atari Version Episode 5.1](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab1.png "Atari Version Episode 5.1")](#features1)
+
+The first version establishes a Display List interrupt on the default text screen.  This is atypically loaded into memory by DOS, and then invoked to run by BASIC, partly just to do it a different way.  Subsequent versions will return to the auto-running binary load file.
+
+HOW TO RUN THIS...
+- Have BASIC present and DOS booted.
+- In DOS, load (option L) the binary file.  
+- Go to Basic (option B).
+- enter X=USR(32768)
+
+Characters typed into the position at the upper left corner of the screen affect the color of the border at the horizontal scrolling location on the screen.
+
+---
+
+***InterruptTextScroller2***
+
+[![Atari Version Episode 5.2](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab2.png "Atari Version Episode 5.2")](#features1)
+
+---
+
+***InterruptTextScroller3***
+
+[![Atari Version Episode 5.3](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab3.png "Atari Version Episode 5.3")](#features1)
+
+---
+
+***InterruptTextScroller4***
+
+[![Atari Version Episode 5.4](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab4.png "Atari Version Episode 5.4")](#features1)
+
+---
+
+***InterruptTextScroller5***
+
+[![Atari Version Episode 5.5](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab5.png "Atari Version Episode 5.5")](#features1)
+
+---
+
+***InterruptTextScroller***
+
+[![Atari Version Episode 5 Final](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab.png "Atari Version Episode 5 Final")](#features1)
+
+---
+
 Assembly program that implements fine scrolling using the video hardware's fine scrolling feature and display-oriented interrupts.
 
 What to do about this Episode...  The several examples presented in the C64 Episode illustrate evolution of display-oriented interrupts used to support fine scrolling a subset of the screen.  Both hardware fine scrolling and display-oriented interrupts work very differently on the Atari and in most cases presenting an Atari version of doing the same thing the same way sort of, kind of, almost approaches pointless, suboptimal, or even incorrect from the Atari programming point of view.

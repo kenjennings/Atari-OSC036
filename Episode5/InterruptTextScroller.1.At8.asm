@@ -22,8 +22,8 @@
 ; In DOS, load (option L) the binary file.  
 ; Go to Basic (option B).
 ; enter X=USR(32768)
-;
-; Original C64 code that is unused or modified is commented out with two semicolons ;;
+; 
+; The other demos after this will be written to autorun from DOS.
 ;
 ; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode5/InterruptTextScroller.1.asm
 ;
@@ -32,23 +32,6 @@
 ;
 ;===============================================================================
  
- 
-;===============================================================================
-; Following is N/A for Atari.  Auto start is done by the executable file 
-; setting an address in the DOS_RUN_ADDR at load time.  
-; We will not be doing the auto-run here, because it must run from BASIC. 
-
-;; 10 SYS (2064)
-
-;; *=$0801
-
-;;    BYTE    $0E, $08, $0A, $00, $9E, $20, $28,  $32, $30, $36, $34, $29, $00, $00, $00
-
-;; *=$0810
-
-;; incasm "VIC II Constants.asm"
-
-
 ;===============================================================================
 ;   ATARI SYSTEM INCLUDES
 ;===============================================================================
@@ -79,8 +62,8 @@ zwPointer1 = ZRET
 
 ;===============================================================================
 ; An auto-running machine language program for the Atari depends on a little
-; infrastructure to keep the in the context of the program.  As soon as the
-; program finishes (RTS) it goes back to DOS, or to the Memo Pad depending 
+; infrastructure to keep the Atari in the context of the program.  As soon as
+; the program finishes (RTS) it goes back to DOS, or to the Memo Pad depending 
 ; on the Atari (or emulator) setup.  We do not want to do that here.  We want 
 ; this code to remain running and in effect during BASIC.
 ;
@@ -98,7 +81,6 @@ zwPointer1 = ZRET
 ; In DOS, load (option L) the binary file.  
 ; Go to Basic (option B).
 ; enter X=USR(32768)
-; 
 ; The other demos after this will be written as regular machine language 
 ; launched from DOS.
 
@@ -128,42 +110,7 @@ DISPOSE                ; Dispose of any number of arguments to make it safe to r
 	pla                ; flush one byte of 16-bit int
 	dey                ; Minus one argument	
 	bne DISPOSE        ; Loop if more to discard.
-	
-; INITIALIZATION:
-; Much of the C64 code doesn't relate to how the Atari works.
-  
-INITIALIZATION
-;;; Initialisation Code $2000 - $206B
-;;	;lda #$00
-;;	;sta VICII_EXTCOL
-;;	;sta VICII_BGCOL0
-
-;;	sei
-;;	lda #VICII_SCROLY_FineScroll_RasterNoCompareMask
-;;	sta $DC0D
-;;	and VICII_SCROLY
-;;	sta VICII_SCROLY
-
-;;	lda #$3A
-;;	sta VICII_RASTER ; Set Raster Interrupt
-;;	lda #<INTERRUPT  ; Set vector for Interrupt routine.
-;;	sta $0314
-;;	lda #>INTERRUPT
-;;	sta $0315
-
-;;	lda #VICII_IRQMASK_ENABLE_RASTER_COMPARE
-;;	sta VICII_IRQMASK
-
-;;	lda VICII_EXTCOL
-;;	sta EXTCOL_BKUP  ; Create a shadow register for EXTCOL
-
-;;	lda VICII_BGCOL0
-;;	sta BGCOL_BKUP   ; Create a shadow register for BGCOL
-
-;;	lda VICII_SCROLX
-;;	sta SCROLX_BKUP  ; create a shadow register for SCROLX
-;;	cli
-
+	  
 ; Atari screen and interrupt setup...
 ; 0) Set default border color and constant scroll value.
 ; 1) Turn off Display List Interrupts
@@ -173,6 +120,8 @@ INITIALIZATION
 ; 3)b) location +1 = Add Horizontal Fine Scrolling
 ; 4) Set Display List Interrupt Vector.
 ; 5) Enable Display List Interrupts.
+
+INITIALIZATION
 
 ; 0) Set default border color and constant scroll value.
 
@@ -225,54 +174,6 @@ INITIALIZATION
 	rts ; Return to BASIC
 
 
-;===============================================================================
-
-; Here the C64 makes backups of the hardware registers... something like 
-; the Atari's OS shadow registers for the hardware registers.
-
-;;EXTCOL_BKUP
-;;	brk
-
-;;BGCOL_BKUP
-;;	brk
-
-;;SCROLX_BKUP
-;;	brk
-
-; Do not need to make any Atari versions, as there are already 
-; shadow registers for playfield colors, and the scroll value 
-; need not change in this version.
-
-INTERRUPT
-
-;;	lda VICII_EXTCOL
-;;	sta EXTCOL_BKUP   ; Save the current border color.
-;;	;lda #$CE
-;;	;sta VICII_RASTER
-    
-;;	lda #$d2          
-;;@Loop               ; Wait until scan line reaches $d2/210
-;;	cmp VICII_RASTER  ; Loop until reached?  Hmmm.  Why doesn't
-;;	bne @Loop         ; INTERRUPT start on the right line?
-
-;;	lda $0400         ; Get the character in the upper left corner of the text screen.
-;;	sta VICII_EXTCOL  ; Use that value as the color of the border.
-;;	lda #$04          
-;;	sta VICII_SCROLX  ; Set horizontal scrolling.
-
-;;	lda #$DB
-;;@Loop1              ; Wait until scan line reaches $db/219
-;;	cmp VICII_RASTER
-;;	bne @Loop1
-
-;;	lda EXTCOL_BKUP   
-;;	sta VICII_EXTCOL  ; Restore original border color.
-;;	lda #$c8
-;;	sta VICII_SCROLX  ; Turn off horizontal scrolling.
-;;	asl VICII_VICIRQ
-;;	jmp $ea31
-
-
 ;==============================================================================
 ;															DLI  
 ;==============================================================================
@@ -280,6 +181,8 @@ INTERRUPT
 ; Set border to color of character in upper corner of screen memory.
 ; Reset to the original color at the end. 
 ;==============================================================================
+
+INTERRUPT
 
 	pha            ; Save the regs we're going to use.
 	tya

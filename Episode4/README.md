@@ -7,7 +7,7 @@ Atari port of OldSkoolCoder's C64 Tutorial 36, Episode 4
 
 Assembly program that implements fine scrolling by shifting bitmapped images through a character set for the VIC-20.  This is fundamentally the same as the C64 version in [**Episode 3**](https://github.com/kenjennings/Atari-OSC036/tree/master/Episode3 "**Episode 3**"), but the VIC-20 has a smaller screen geometry.
 
-In the Atari's case this is using ANTIC Mode 6 text (BASIC GRAPHICS MODE 1) which uses characters twice the width of normal text modes, and so displays 20 characters per line, similar to the VIC-20.  In this text mode only half the character set is available, but only 21 characters are needed to perform the scroll.  However, since this is scrolling text image bitmaps it can use the bitmaps for the entire character set, or any custom character set.
+In the Atari's case this is using ANTIC Mode 6 text (BASIC GRAPHICS MODE 1) which uses characters twice the width of normal text modes, and so displays 20 characters per line, similar to the VIC-20.  In this text mode only half the character set (64 characters) is availabe, but only 21 are needed to perform the scroll.  
 
 Since the number of characters on the line is half the normal text mode, the scrolling code shifting character set data now completes reasonably quickly in much less than one video frame.
 

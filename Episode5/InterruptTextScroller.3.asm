@@ -351,8 +351,8 @@ b_DLILoop
 	
 	lda #4              ; reset to show 4 color clocks from buffer.
 	sta SCROLX
-	
-	jst TestOn          ; Turn on green colors to identify coarse scrolling time.
+
+	jsr TestOn          ; Turn on green colors to identify coarse scrolling time.
 	jsr TextLooper      ; Coarse scroll.
 	jsr TestOff         ; turn off the green colors.
 
@@ -402,7 +402,8 @@ TextLoader
 b_TL_SkipHiByte
 	rts
 
-EndOfText              ; Reset the scroll to the start.
+;;EndOfText              
+b_EndOfText    ; Reset the scroll to the start.
 	lda #<TEXTToScroll
 	sta TextLoader + 1
 	lda #>TEXTToScroll
@@ -497,7 +498,7 @@ TEXTToScroll
 	.sb "     Please support me on patreon       " ; line 6
 	.sb "      @ https://www.patreon.com/        " ; line 7
 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 8
-	.sb "Atari parody by Ken Jennings, Jan 2020. " ; line 9
+	.sb "Atari parody by Ken Jennings, Feb 2020. " ; line 9
 	.sb "github:https://github.com/kenjennings/At" ; line 10
 	.sb "ari-OSC036/                  The End...!" ; line 11
 

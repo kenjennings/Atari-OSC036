@@ -93,7 +93,7 @@ This effect could also be done on the Atari during the Display List Interrupt by
 
 [![Atari Version Episode 5 Final](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab.png "Atari Version Episode 5 Final")](#features1)
 
-This is the same as the Version 5 demonstration with the visible diagnostic information removed and the backgroundand border colors set to black.
+This is performing the same effect as the Version 5 demonstration with the visible diagnostic information removed and the background and border colors set to black.   Since the static display is no longer visible, the program removes the excess spacing used to align the text for static display on the 40 column screen.
 
 ---
 

@@ -7,13 +7,17 @@ Atari port of OldSkoolCoders C64 Tutorial 36, Episode 5 -  ***WORK IN PROGRESS**
 
 ***Files Ending At8.asm*** - The same as the  "*.asm" file, but with all the unused code and some useless comments deleted leaving just the working Atari parts.
 
+Additions in these demos --  In the fully 100% machine language versions of the demos (versions 2 through 5) the text being scrolled is also shown at the top of the screen.  The code also swaps the screen colors to green during the time it is executing the coarse scrolling code to illustrate how much CPU time it takes.
+
 ---
 
 ***InterruptTextScroller1***
 
 [![Atari Version Episode 5.1](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab1.png "Atari Version Episode 5.1")](#features1)
 
-The first version establishes a Display List interrupt on the default text screen.  This is atypically loaded into memory by DOS, and then invoked to run by BASIC, partly just to do it a different way.  Subsequent versions will return to the auto-running binary load file.
+No actual scrolling occurs in this demonstration.  This sets up the frame work for a scrolling line of text on the screen.
+
+The first version establishes a Display List interrupt on the default text screen.  This is purposely organized as similar to the way the C64 does this -- the machine language is loaded into memory, but actually invoked to run by BASIC.  Subsequent versions will return to the Atari's auto-running binary load file mechanism.
 
 HOW TO RUN THIS...
 - Have BASIC present and DOS booted.
@@ -29,11 +33,23 @@ Characters typed into the position at the upper left corner of the screen affect
 
 [![Atari Version Episode 5.2](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab2.png "Atari Version Episode 5.2")](#features1)
 
+Since fudging about with part BASIC and part machine language is a bit painful, we're returning to the Atari's 100% machine language, auto-executing programs.
+
+This version adds coarse scrolling to present text on the scrolling line.  Still no fine scrolling.
+
+The determination of the border color on the scrolling text line has been changed.  In Version 1, the BASIC + machine language version, it used the character in the upper left corner of the screen as the color.  This version uses the Atari OS frame (jiffy) counter to set the border color. 
+
 ---
 
 ***InterruptTextScroller3***
 
 [![Atari Version Episode 5.3](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab3.png "Atari Version Episode 5.3")](#features1)
+
+This version adds fine scrolling the text the way the C64 does it.  
+
+Notable differences -- The Atari fine scrolls in color clocks to maintain NTSC color consistency.  In order to scroll at the same visible speed as the C64 the Atari scrolls half as often.  Therefore the frame counter used on the C64 as the basis for the fine scroll setting is not used the same way on the Atari.  The Atari uses the frame counter to do scrolling every other frame. Then, when fine scrolling the Atari has another value for tracking the four fine scroll postions for one character 4, 3, 2, 1.
+
+While this C64-like code design does work on the Atari, this is not the usual way for scrolling on the Atari.  The Atari buffers 16 color clocks -- up to the width of four text characters and so could coarse scroll once every fourth character rather than for each character.  Also, coarse scrolling on the Atari can be done very quickly by changing a 16-bit pointer reference in the Display List which alters where the ANTIC video chip reads memory for the screen rather than actually moving all 40 bytes of data around in screen memory.
 
 ---
 
@@ -41,11 +57,19 @@ Characters typed into the position at the upper left corner of the screen affect
 
 [![Atari Version Episode 5.4](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab4.png "Atari Version Episode 5.4")](#features1)
 
+This version adds color raster color bars vertically scrolling within the horizontal text scrolling line.
+
+The color cycling borders are removed.
+
 ---
 
 ***InterruptTextScroller5***
 
 [![Atari Version Episode 5.5](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab5.png "Atari Version Episode 5.5")](#features1)
+
+This version switches the color raster bars in the scrolling text to effect the text rather than the background.  This is done by displaying the text as inverse video showing the background color through where the text is.  
+
+This effect could also be done on the Atari during the Display List Interrupt by setting the text background color to the raster color with luminance 0, and then setting the text luminance to the ramped value.
 
 ---
 

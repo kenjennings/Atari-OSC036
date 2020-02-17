@@ -194,7 +194,7 @@ INITIALIZATION
 	sta COLOR4                  ; DLI will look like it does something.
 
 	lda #0
-	sta COLOR1                  ; Set text brightness to zero.
+	sta COLOR1                  ; Set text brightness to darkest/zero.
 
 ; 1) Turn off Display List Interrupts
 
@@ -301,10 +301,18 @@ VideoRamColour
 ; based on brightness ramp like this:
 ; 0 0 2 2 4 6 8 10 12 12 14 14 12 12 10 8 6 4 2 2 0 0  
 ; 0 to 65.  return to 0 at 66.
-	.by $30,$32,$32,$34,$36,$38,$3A,$3C,$3C,$3E,$3E,$3C,$3C,$3A,$38,$36,$34,$32,$32,$30,$30  ; Red 0 - 20
-	.by $c0,$c2,$c2,$c4,$c6,$c8,$cA,$cC,$cC,$cE,$cE,$cC,$cC,$cA,$c8,$c6,$c4,$c2,$c2,$c0,$c0  ; Green 21 - 41
-	.by $70,$72,$72,$74,$76,$78,$7A,$7C,$7C,$7E,$7E,$7C,$7C,$7A,$78,$76,$74,$72,$72,$70,$70  ; Blue  42 - 62
-	.by $30,$32,$32,$34,$36,$38,$3A,$3C                 ; Overlap back to red.                       63...                    
+;
+; Second go-around for inverse video text.   
+; 16 steps for brightness.
+; 8*2 steps for color.
+; Then shoft and offset colors by half.
+; resulting in Candy Rainbows.....
+	.by $06,$06,$16,$18,$28,$2a,$3c,$3e,$4e,$4c,$5a,$58,$68,$66,$76,$76 ; 0 to 15
+	.by $86,$86,$96,$98,$a8,$aa,$bc,$be,$ce,$cc,$da,$d8,$e8,$e6,$f6,$f6 ; 16 to 31
+	.by $46,$46,$56,$58,$68,$6a,$7c,$7e,$8e,$8c,$9a,$98,$a8,$a6,$b6,$b6 ; 32 to 47
+	.by $c6,$c6,$d6,$d8,$e8,$ea,$fc,$fe,$0e,$0c,$1a,$18,$28,$26,$36,$36 ; 48 to 63
+	.by $06,$06,$16,$18,$28,$2a,$3c                                     ; 64 to 70
+               
 
 
 ;===============================================================================
@@ -381,14 +389,14 @@ INTERRUPT
 	tya
 	pha
 	
-	ldx #6         ; For the scan line loop later.
+	ldx #7         ; For the scan line loop later.
 	ldy COLORRAMP
 	lda SCROLX     ; On the Atari this must be set BEFORE displaying the scrolling line.
 	sta HSCROL
 	
-	lda RTCLOK60   ; Get the system frame counter use for border color.
+;	lda RTCLOK60   ; Get the system frame counter use for border color.
 ;;	sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 0
-	sta COLBK      ; = $D01A ; Border color in mode 2
+;	sta COLBK      ; = $D01A ; Border color in mode 2
 	lda VideoRamColour,y   ; Get a new color for text background.
 	sta COLPF2     ; = $D018 ; Text Background color in mode 2
 
@@ -427,7 +435,7 @@ b_DLILoop
 
 	inc COLORRAMP ; Increment color ramp every other frame.
 	lda COLORRAMP
-	cmp #62       ; Reached the end of the table.
+	cmp #64       ; Reached the end of the table.
 	bne bSkipResetColorRamp
 	lda #0
 	sta COLORRAMP

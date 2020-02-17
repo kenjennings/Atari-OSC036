@@ -1905,7 +1905,7 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/macros.asm
    294 3349 8D 1A D0			sta COLBK      ; = $D01A ; Border color in mode 2
    295 334C AD C8 02			lda COLOR4     ; Get original OS shadow for the border later
    296
-   297 334F A2 07			ldx #7
+   297 334F A2 08			ldx #8
    298 3351			b_DLILoop
    299 3351 8D 0A D4			sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 7,6,5...0
    300 3354 CA				dex

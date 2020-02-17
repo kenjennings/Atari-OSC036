@@ -29,7 +29,7 @@ These demos implement the coarse scrolling the same way as the C64 does by rewri
 
 ***InterruptTextScroller1***
 
-[![Atari Version Episode 5.1](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab1.png "Atari Version Episode 5.1")](#features1)
+[![Atari Version Episode 5.1](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab5.1.png "Atari Version Episode 5.1")](#features1)
 
 No actual scrolling occurs in this demonstration.  This sets up the frame work for a scrolling line of text on the screen.
 
@@ -47,7 +47,7 @@ Characters typed into the position at the upper left corner of the screen affect
 
 ***InterruptTextScroller2***
 
-[![Atari Version Episode 5.2](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab2.png "Atari Version Episode 5.2")](#features1)
+[![Atari Version Episode 5.2](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab5.2.png "Atari Version Episode 5.2")](#features1)
 
 Since fudging about with part BASIC and part machine language is a bit painful, we're returning to the Atari's 100% machine language, auto-executing programs.
 
@@ -59,7 +59,7 @@ The determination of the border color on the scrolling text line has been change
 
 ***InterruptTextScroller3***
 
-[![Atari Version Episode 5.3](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab3.png "Atari Version Episode 5.3")](#features1)
+[![Atari Version Episode 5.3](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab5.3.png "Atari Version Episode 5.3")](#features1)
 
 This version adds fine scrolling the text the way the C64 does it.  
 
@@ -71,7 +71,7 @@ While this C64-like code design does work on the Atari, this is not the usual wa
 
 ***InterruptTextScroller4***
 
-[![Atari Version Episode 5.4](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab4.png "Atari Version Episode 5.4")](#features1)
+[![Atari Version Episode 5.4](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab5.4.png "Atari Version Episode 5.4")](#features1)
 
 This version adds color raster color bars vertically scrolling within the horizontal text scrolling line.
 
@@ -81,7 +81,7 @@ The color cycling borders are removed.
 
 ***InterruptTextScroller5***
 
-[![Atari Version Episode 5.5](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab5.png "Atari Version Episode 5.5")](#features1)
+[![Atari Version Episode 5.5](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab5.5.png "Atari Version Episode 5.5")](#features1)
 
 This version switches the color raster bars in the scrolling text to effect the text rather than the background.  This is done by displaying the text as inverse video showing the background color through where the text is.  
 

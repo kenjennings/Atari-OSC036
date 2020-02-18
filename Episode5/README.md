@@ -5,7 +5,7 @@ Atari port of OldSkoolCoders C64 Tutorial 36, Episode 5
 
 ***Files Ending .asm*** - The original C64 assembly with modifications for the Atari and optimizations where possible.  C64-specific code is present and commented out.
 
-***Files Ending At8.asm*** - The same as the  "*.asm" file, but with all the unused code and some useless comments deleted leaving just the working Atari parts.
+***Files Ending .At8.asm*** - The same as the  "*.asm" file, but with all the unused code and some useless comments deleted leaving just the working Atari parts.
 
 Additions in these demos --  In the fully 100% machine language versions of the demos (versions 2 through 5) the text being scrolled is also shown at the top of the screen.  The code also swaps the screen colors to green during the time it is executing the coarse scrolling code to illustrate how much CPU time it takes.
 

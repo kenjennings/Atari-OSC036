@@ -304,8 +304,8 @@ VideoRamColour
 ;
 ; Second go-around for inverse video text.   
 ; 16 steps for brightness.
-; 8*2 steps for color.
-; Then shoft and offset colors by half.
+; 8 * 2 steps for color.
+; Then shift and offset colors by half.
 ; resulting in Candy Rainbows.....
 	.by $06,$06,$16,$18,$28,$2a,$3c,$3e,$4e,$4c,$5a,$58,$68,$66,$76,$76 ; 0 to 15
 	.by $86,$86,$96,$98,$a8,$aa,$bc,$be,$ce,$cc,$da,$d8,$e8,$e6,$f6,$f6 ; 16 to 31
@@ -372,9 +372,7 @@ INTERRUPT
 ;==============================================================================
 ; Simulate what the C64 interrupt appears to be doing.
 ; Set fine scroll.
-; Set border to color.   In this case, use the OS frame counter instead of 
-; pulling a character value from the screen.
-; Reset to the original color at the end. 
+; Set each scan line of text a different color from the table.
 ; The ANTIC chip isolates scrolling to specific lines on the 
 ; Display List. The act of setting scroll values and coarse scrolling is 
 ; done before the scan line reaches the scrolling area, or after the 
@@ -411,10 +409,11 @@ b_DLILoop
 	; DLI is done.   Clean up afterwards.  
 	; Prep next scroll and complete coarse scroll if needed.
 
-	lda COLOR4     ; Get original OS shadow for the border 
-	sta WSYNC
-	sta COLBK      ; = $D01A ; Restore Border color in mode 2
+;	lda COLOR4     ; Get original OS shadow for the border 
+;	sta WSYNC
+;	sta COLBK      ; = $D01A ; Restore Border color in mode 2
 	lda COLOR2     ; Get original OS shadow for the text background 
+	sta WSYNC
 	sta COLPF2     ; = $D018 ; Text Background color in mode 2
 
 	; On the Atari the Frame Counter != scroll value.
@@ -435,12 +434,9 @@ b_DLILoop
 
 	inc COLORRAMP ; Increment color ramp every other frame.
 	lda COLORRAMP
-	cmp #64       ; Reached the end of the table.
-	bne bSkipResetColorRamp
-	lda #0
+	and #63       ; The loop back to 0 occurs at magic number 64
 	sta COLORRAMP
-	
-bSkipResetColorRamp	
+
 	dec SCROLX               ; Scroll 4, 3, 2, 1, at 0 then restart at 4
 	bne b_DLI_BypassScroller ; Did not reach 0.
 	

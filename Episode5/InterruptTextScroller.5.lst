@@ -1801,7 +1801,7 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/macros.asm
    190
    191 				; 0) Set default border color.
    192
-   193 FFFF> 3308-3441> A9 6C		lda #[COLOR_PURPLE_BLUE|$C] ; Set a non-black border color, so the
+   193 FFFF> 3308-3437> A9 6C		lda #[COLOR_PURPLE_BLUE|$C] ; Set a non-black border color, so the
    194 330A 8D C8 02			sta COLOR4                  ; DLI will look like it does something.
    195
    196 330D A9 00			lda #0
@@ -1821,7 +1821,7 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/macros.asm
    210
    211 				; 3) Set Display List. 
    212
-   213 3321 20 3B 34			jsr libScreenWaitFrame ; Make sure the display list update below 
+   213 3321 20 31 34			jsr libScreenWaitFrame ; Make sure the display list update below 
    214 					                       ; cannot be interrupted by the vertical blank.
    215
    216 3324 A9 00			lda #<DISPLAYLIST      ; Tell the system where to find the new display list.
@@ -1836,9 +1836,9 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/macros.asm
    225 					
    226 					; More -- load up the self-modifying code to start displaying the scrolling text.
    227 3333 A9 00			lda #<TEXTToScroll
-   228 3335 8D FD 33			sta TextLoader + 1
+   228 3335 8D F3 33			sta TextLoader + 1
    229 3338 A9 38			lda #>TEXTToScroll
-   230 333A 8D FE 33			sta TextLoader + 2
+   230 333A 8D F4 33			sta TextLoader + 2
    231 					
    232 				;;	lda #0
    233 				;;	sta TEXT_FRAME_COUNTER
@@ -1915,8 +1915,8 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/macros.asm
    304 				;
    305 				; Second go-around for inverse video text.   
    306 				; 16 steps for brightness.
-   307 				; 8*2 steps for color.
-   308 				; Then shoft and offset colors by half.
+   307 				; 8 * 2 steps for color.
+   308 				; Then shift and offset colors by half.
    309 				; resulting in Candy Rainbows.....
    310 3343 06 06 16 18 28 2A + 	.by $06,$06,$16,$18,$28,$2a,$3c,$3e,$4e,$4c,$5a,$58,$68,$66,$76,$76 ; 0 to 15
    311 3353 86 86 96 98 A8 AA + 	.by $86,$86,$96,$98,$a8,$aa,$bc,$be,$ce,$cc,$da,$d8,$e8,$e6,$f6,$f6 ; 16 to 31
@@ -1983,396 +1983,392 @@ Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/macros.asm
    372 				;==============================================================================
    373 				; Simulate what the C64 interrupt appears to be doing.
    374 				; Set fine scroll.
-   375 				; Set border to color.   In this case, use the OS frame counter instead of 
-   376 				; pulling a character value from the screen.
-   377 				; Reset to the original color at the end. 
-   378 				; The ANTIC chip isolates scrolling to specific lines on the 
-   379 				; Display List. The act of setting scroll values and coarse scrolling is 
-   380 				; done before the scan line reaches the scrolling area, or after the 
-   381 				; scrolling region has been displayed.
-   382 				; Here we're trying to do this the C64 way including coarse scrolling 
-   383 				; text bytes through screen memory at the end of the interrupt.
-   384 				;==============================================================================
-   385
-   386 338A 48				pha            ; Save the regs we're going to use.
-   387 338B 8A				txa
-   388 338C 48				pha
-   389 338D 98				tya
-   390 338E 48				pha
-   391 					
-   392 338F A2 07			ldx #7         ; For the scan line loop later.
-   393 3391 AC 42 33			ldy COLORRAMP
-   394 3394 AD 41 33			lda SCROLX     ; On the Atari this must be set BEFORE displaying the scrolling line.
-   395 3397 8D 04 D4			sta HSCROL
-   396 					
-   397 				;	lda RTCLOK60   ; Get the system frame counter use for border color.
-   398 				;;	sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 0
-   399 				;	sta COLBK      ; = $D01A ; Border color in mode 2
-   400 339A B9 43 33			lda VideoRamColour,y   ; Get a new color for text background.
-   401 339D 8D 18 D0			sta COLPF2     ; = $D018 ; Text Background color in mode 2
-   402
-   403 33A0			b_DLILoop
-   404 33A0 C8				iny
-   405 33A1 B9 43 33			lda VideoRamColour,y   ; Get a new color for text background.
-   406 33A4 8D 0A D4			sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 7,6,5...0
-   407 33A7 8D 18 D0			sta COLPF2     ; = $D018 ; Text Background color in mode 2
-   408 33AA CA				dex
-   409 33AB D0 F3			bne b_DLILoop
-   410
-   411 					; DLI is done.   Clean up afterwards.  
-   412 					; Prep next scroll and complete coarse scroll if needed.
-   413
-   414 33AD AD C8 02			lda COLOR4     ; Get original OS shadow for the border 
-   415 33B0 8D 0A D4			sta WSYNC
-   416 33B3 8D 1A D0			sta COLBK      ; = $D01A ; Restore Border color in mode 2
-   417 33B6 AD C6 02			lda COLOR2     ; Get original OS shadow for the text background 
-   418 33B9 8D 18 D0			sta COLPF2     ; = $D018 ; Text Background color in mode 2
-   419
-   420 					; On the Atari the Frame Counter != scroll value.
-   421
-   422 				;;	dec TEXT_FRAME_COUNTER
-   423 				;;	lda TEXT_FRAME_COUNTER
-   424 				;;	and #7
-   425 				;;	sta TEXT_FRAME_COUNTER
-   426 				;;	cmp #7
-   427 				;;	bne @BYPASSSCROLLER
-   428
-   429 					; On the Atari fine scrolling is every other frame to go at the same speed as the C64.
-   430 					
-   431 33BC AD 40 33		 	lda TEXT_FRAME_COUNTER
-   432 33BF 49 01			eor #1
-   433 33C1 8D 40 33			sta TEXT_FRAME_COUNTER
-   434 33C4 D0 1F			bne b_DLI_BypassScroller ; Skip coarse scroll when counter is not 0.
-   435
-   436 33C6 EE 42 33			inc COLORRAMP ; Increment color ramp every other frame.
-   437 33C9 AD 42 33			lda COLORRAMP
-   438 33CC C9 40			cmp #64       ; Reached the end of the table.
-   439 33CE D0 05			bne bSkipResetColorRamp
-   440 33D0 A9 00			lda #0
-   441 33D2 8D 42 33			sta COLORRAMP
+   375 				; Set each scan line of text a different color from the table.
+   376 				; The ANTIC chip isolates scrolling to specific lines on the 
+   377 				; Display List. The act of setting scroll values and coarse scrolling is 
+   378 				; done before the scan line reaches the scrolling area, or after the 
+   379 				; scrolling region has been displayed.
+   380 				; Here we're trying to do this the C64 way including coarse scrolling 
+   381 				; text bytes through screen memory at the end of the interrupt.
+   382 				;==============================================================================
+   383
+   384 338A 48				pha            ; Save the regs we're going to use.
+   385 338B 8A				txa
+   386 338C 48				pha
+   387 338D 98				tya
+   388 338E 48				pha
+   389 					
+   390 338F A2 07			ldx #7         ; For the scan line loop later.
+   391 3391 AC 42 33			ldy COLORRAMP
+   392 3394 AD 41 33			lda SCROLX     ; On the Atari this must be set BEFORE displaying the scrolling line.
+   393 3397 8D 04 D4			sta HSCROL
+   394 					
+   395 				;	lda RTCLOK60   ; Get the system frame counter use for border color.
+   396 				;;	sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 0
+   397 				;	sta COLBK      ; = $D01A ; Border color in mode 2
+   398 339A B9 43 33			lda VideoRamColour,y   ; Get a new color for text background.
+   399 339D 8D 18 D0			sta COLPF2     ; = $D018 ; Text Background color in mode 2
+   400
+   401 33A0			b_DLILoop
+   402 33A0 C8				iny
+   403 33A1 B9 43 33			lda VideoRamColour,y   ; Get a new color for text background.
+   404 33A4 8D 0A D4			sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 7,6,5...0
+   405 33A7 8D 18 D0			sta COLPF2     ; = $D018 ; Text Background color in mode 2
+   406 33AA CA				dex
+   407 33AB D0 F3			bne b_DLILoop
+   408
+   409 					; DLI is done.   Clean up afterwards.  
+   410 					; Prep next scroll and complete coarse scroll if needed.
+   411
+   412 				;	lda COLOR4     ; Get original OS shadow for the border 
+   413 				;	sta WSYNC
+   414 				;	sta COLBK      ; = $D01A ; Restore Border color in mode 2
+   415 33AD AD C6 02			lda COLOR2     ; Get original OS shadow for the text background 
+   416 33B0 8D 0A D4			sta WSYNC
+   417 33B3 8D 18 D0			sta COLPF2     ; = $D018 ; Text Background color in mode 2
+   418
+   419 					; On the Atari the Frame Counter != scroll value.
+   420
+   421 				;;	dec TEXT_FRAME_COUNTER
+   422 				;;	lda TEXT_FRAME_COUNTER
+   423 				;;	and #7
+   424 				;;	sta TEXT_FRAME_COUNTER
+   425 				;;	cmp #7
+   426 				;;	bne @BYPASSSCROLLER
+   427
+   428 					; On the Atari fine scrolling is every other frame to go at the same speed as the C64.
+   429 					
+   430 33B6 AD 40 33		 	lda TEXT_FRAME_COUNTER
+   431 33B9 49 01			eor #1
+   432 33BB 8D 40 33			sta TEXT_FRAME_COUNTER
+   433 33BE D0 1B			bne b_DLI_BypassScroller ; Skip coarse scroll when counter is not 0.
+   434
+   435 33C0 EE 42 33			inc COLORRAMP ; Increment color ramp every other frame.
+   436 33C3 AD 42 33			lda COLORRAMP
+   437 33C6 29 3F			and #63       ; The loop back to 0 occurs at magic number 64
+   438 33C8 8D 42 33			sta COLORRAMP
+   439
+   440 33CB CE 41 33			dec SCROLX               ; Scroll 4, 3, 2, 1, at 0 then restart at 4
+   441 33CE D0 0B			bne b_DLI_BypassScroller ; Did not reach 0.
    442 					
-   443 33D5			bSkipResetColorRamp	
-   444 33D5 CE 41 33			dec SCROLX               ; Scroll 4, 3, 2, 1, at 0 then restart at 4
-   445 33D8 D0 0B			bne b_DLI_BypassScroller ; Did not reach 0.
-   446 					
-   447 33DA A9 04			lda #4              ; reset to show 4 color clocks from buffer.
-   448 33DC 8D 41 33			sta SCROLX
-   449 					
-   450 33DF 20 1A 34			jsr TestOn          ; Turn on green colors to identify coarse scrolling and color table time.
-   451 33E2 20 EF 33			jsr TextLooper
-   452
-   453 				;;@BYPASSSCROLLER
-   454 33E5			b_DLI_BypassScroller
-   455 				;	jst TestOn          ; Turn on green colors to identify coarse scrolling and color table time.
-   456 				;;	jsr RotateColors    ; Move the color table.
-   457 					
-   458 33E5 20 28 34			jsr TestOff         ; turn off the green colors.
-   459 					
-   460 33E8 68				pla                 ; Restore the regs used.
-   461 33E9 A8				tay
-   462 33EA 68				pla
-   463 33EB AA				tax
-   464 33EC 68				pla
-   465 33ED 40				rti
-   466 					
-   467 				;;	jmp $ea31
-   468
-   469 				;===============================================================================
-   470
-   471 				; On the Atari we're just using an index into a color table, so 
-   472 				; this is not needed.
-   473
-   474 				;;RotateColours
-   475 				;;	ldx #$00
-   476 				;;@Loop
-   477 				;;	lda $0401,x
-   478 				;;	sta $0400,x
-   479 				;;	inx
-   480 				;;	cpx #NoOfColours
-   481 				;;	bne @Loop
-   482 				;;	lda $0400
-   483 				;;	sta $03FF + NoOfColours
-   484
-   485 33EE 60			    rts
+   443 33D0 A9 04			lda #4              ; reset to show 4 color clocks from buffer.
+   444 33D2 8D 41 33			sta SCROLX
+   445 					
+   446 33D5 20 10 34			jsr TestOn          ; Turn on green colors to identify coarse scrolling and color table time.
+   447 33D8 20 E5 33			jsr TextLooper
+   448
+   449 				;;@BYPASSSCROLLER
+   450 33DB			b_DLI_BypassScroller
+   451 				;	jst TestOn          ; Turn on green colors to identify coarse scrolling and color table time.
+   452 				;;	jsr RotateColors    ; Move the color table.
+   453 					
+   454 33DB 20 1E 34			jsr TestOff         ; turn off the green colors.
+   455 					
+   456 33DE 68				pla                 ; Restore the regs used.
+   457 33DF A8				tay
+   458 33E0 68				pla
+   459 33E1 AA				tax
+   460 33E2 68				pla
+   461 33E3 40				rti
+   462 					
+   463 				;;	jmp $ea31
+   464
+   465 				;===============================================================================
+   466
+   467 				; On the Atari we're just using an index into a color table, so 
+   468 				; this is not needed.
+   469
+   470 				;;RotateColours
+   471 				;;	ldx #$00
+   472 				;;@Loop
+   473 				;;	lda $0401,x
+   474 				;;	sta $0400,x
+   475 				;;	inx
+   476 				;;	cpx #NoOfColours
+   477 				;;	bne @Loop
+   478 				;;	lda $0400
+   479 				;;	sta $03FF + NoOfColours
+   480
+   481 33E4 60			    rts
+   482
+   483
+   484 				;===============================================================================
+   485 				; Coarse scroll the line of text.
    486
-   487
-   488 				;===============================================================================
-   489 				; Coarse scroll the line of text.
-   490
-   491 33EF			TextLooper
-   492 33EF A2 00			ldx #0
-   493
-   494 33F1			TextMover
-   495 33F1 BD E5 39			lda SCREENROW+1,x ; Shift screen row 
-   496 33F4 9D E4 39			sta SCREENROW,x
-   497 33F7 E8				inx
-   498 33F8 E0 27			cpx #39
-   499 33FA D0 F5			bne TextMover
-   500
-   501 33FC			TextLoader
-   502 33FC AD 00 38			lda TEXTToScroll
-   503 				;;	cmp #255
-   504 				;;	beq EndOfText     ; Don't need comparison when the end of text is the only negative value.
-   505 33FF 30 0E			bmi b_EndOfText
-   506 3401 09 80		    ora #128          ; Add 128... Make inverse video? On the C64 and the Atari.
-   507 3403 8D 0B 3A		    sta SCREENROW+39
-   508
-   509 				;;	clc
-   510 				;;	lda TextLoader + 1
-   511 				;;	adc #1
-   512 				;;	sta TextLoader + 1
-   513 				;;	lda TextLoader + 2
-   514 				;;	adc #0
-   515 				;;	sta TextLoader + 2
-   516
-   517 3406 EE FD 33			inc TextLoader + 1    ; Increment the address pointing to the 
-   518 3409 D0 03			bne b_TL_SkipHiByte ; input buffer of text to scroll.
-   519 340B EE FE 33			inc TextLoader + 2
-   520 340E			b_TL_SkipHiByte
-   521 340E 60				rts
-   522
-   523
-   524 				;; EndOfText
-   525 340F			b_EndOfText              ; Reset the scroll to the start.
-   526 340F A9 00			lda #<TEXTToScroll
-   527 3411 8D FD 33			sta TextLoader + 1
-   528 3414 A9 38			lda #>TEXTToScroll
-   529 3416 8D FE 33			sta TextLoader + 2
-   530
-   531 3419 60			    rts
-   532
-   533
-   534 				;==============================================================================
-   535 				;														           TESTON  A  
-   536 				;==============================================================================
-   537 				; Subroutine to change the hardware color registers to identify where the 
-   538 				; compute time begins.  
-   539 				;
-   540 				; This is expected to be called immediately after pausing for the specific 
-   541 				; scan line AFTER the scrolling line.
-   542 				;
-   543 				; TestOn uses  A .
-   544 				;==============================================================================
-   545
-   546 341A			TestOn
-   547 341A A9 CC			lda #[COLOR_GREEN+$0C]
-   548 341C 8D 18 D0			sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
-   549 341F 8D 1A D0			sta COLBK  ; = $D01A ; Playfield Background color - The border color
-   550 3422 A9 00			lda #COLOR_BLACK
-   551 3424 8D 17 D0			sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
-   552
-   553 3427 60				rts
-   554
-   555 					
-   556 				;==============================================================================
-   557 				;														           TESTOFF  A  
-   558 				;==============================================================================
-   559 				; Subroutine to change the hardware color registers back to the values 
-   560 				; in the OS Shadow registers to identify where the compute time ends. 
-   561 				;
-   562 				; TestOff uses  A .
-   563 				;==============================================================================
-   564
-   565 3428			TestOff
-   566 3428 AD C8 02			lda COLOR4 ; = $02C8 ; COLBK  - Playfield Background color (Border for modes 2, 3, and F)
-   567 342B 8D 1A D0			sta COLBK  ; = $D01A ; Playfield Background color - The border color
-   568 342E AD C6 02			lda COLOR2 ; = $02C6 ; COLPF2 - Playfield 2 color (Background for ANTIC modes 2, 3, and F)
-   569 3431 8D 18 D0			sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
-   570 3434 AD C5 02			lda COLOR1 ; = $02C5 ; COLPF1 - Playfield 1 color (Text for modes 2, 3, pixels for mode F)
-   571 3437 8D 17 D0			sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
-   572
-   573 343A 60				rts
-   574
-   575
-   576 				;==============================================================================
-   577 				;															SCREENWAITFRAME  A  
-   578 				;==============================================================================
-   579 				; Subroutine to wait for the current frame to finish display.
-   580 				; At the end we know the electron beam is at the top of the screen, so there
-   581 				; is reasonable assumption that code immediately following this will not be
-   582 				; interrupted by the VBI.
-   583 				;
-   584 				; ScreenWaitFrame  uses A
-   585 				;==============================================================================
-   586
-   587 343B			libScreenWaitFrame
-   588 343B A5 14			lda RTCLOK60  ; Read the jiffy clock incremented during vertical blank.
+   487 33E5			TextLooper
+   488 33E5 A2 00			ldx #0
+   489
+   490 33E7			TextMover
+   491 33E7 BD E5 39			lda SCREENROW+1,x ; Shift screen row 
+   492 33EA 9D E4 39			sta SCREENROW,x
+   493 33ED E8				inx
+   494 33EE E0 27			cpx #39
+   495 33F0 D0 F5			bne TextMover
+   496
+   497 33F2			TextLoader
+   498 33F2 AD 00 38			lda TEXTToScroll
+   499 				;;	cmp #255
+   500 				;;	beq EndOfText     ; Don't need comparison when the end of text is the only negative value.
+   501 33F5 30 0E			bmi b_EndOfText
+   502 33F7 09 80		    ora #128          ; Add 128... Make inverse video? On the C64 and the Atari.
+   503 33F9 8D 0B 3A		    sta SCREENROW+39
+   504
+   505 				;;	clc
+   506 				;;	lda TextLoader + 1
+   507 				;;	adc #1
+   508 				;;	sta TextLoader + 1
+   509 				;;	lda TextLoader + 2
+   510 				;;	adc #0
+   511 				;;	sta TextLoader + 2
+   512
+   513 33FC EE F3 33			inc TextLoader + 1    ; Increment the address pointing to the 
+   514 33FF D0 03			bne b_TL_SkipHiByte ; input buffer of text to scroll.
+   515 3401 EE F4 33			inc TextLoader + 2
+   516 3404			b_TL_SkipHiByte
+   517 3404 60				rts
+   518
+   519
+   520 				;; EndOfText
+   521 3405			b_EndOfText              ; Reset the scroll to the start.
+   522 3405 A9 00			lda #<TEXTToScroll
+   523 3407 8D F3 33			sta TextLoader + 1
+   524 340A A9 38			lda #>TEXTToScroll
+   525 340C 8D F4 33			sta TextLoader + 2
+   526
+   527 340F 60			    rts
+   528
+   529
+   530 				;==============================================================================
+   531 				;														           TESTON  A  
+   532 				;==============================================================================
+   533 				; Subroutine to change the hardware color registers to identify where the 
+   534 				; compute time begins.  
+   535 				;
+   536 				; This is expected to be called immediately after pausing for the specific 
+   537 				; scan line AFTER the scrolling line.
+   538 				;
+   539 				; TestOn uses  A .
+   540 				;==============================================================================
+   541
+   542 3410			TestOn
+   543 3410 A9 CC			lda #[COLOR_GREEN+$0C]
+   544 3412 8D 18 D0			sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
+   545 3415 8D 1A D0			sta COLBK  ; = $D01A ; Playfield Background color - The border color
+   546 3418 A9 00			lda #COLOR_BLACK
+   547 341A 8D 17 D0			sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
+   548
+   549 341D 60				rts
+   550
+   551 					
+   552 				;==============================================================================
+   553 				;														           TESTOFF  A  
+   554 				;==============================================================================
+   555 				; Subroutine to change the hardware color registers back to the values 
+   556 				; in the OS Shadow registers to identify where the compute time ends. 
+   557 				;
+   558 				; TestOff uses  A .
+   559 				;==============================================================================
+   560
+   561 341E			TestOff
+   562 341E AD C8 02			lda COLOR4 ; = $02C8 ; COLBK  - Playfield Background color (Border for modes 2, 3, and F)
+   563 3421 8D 1A D0			sta COLBK  ; = $D01A ; Playfield Background color - The border color
+   564 3424 AD C6 02			lda COLOR2 ; = $02C6 ; COLPF2 - Playfield 2 color (Background for ANTIC modes 2, 3, and F)
+   565 3427 8D 18 D0			sta COLPF2 ; = $D018 ; Playfield 2 color - the text background.
+   566 342A AD C5 02			lda COLOR1 ; = $02C5 ; COLPF1 - Playfield 1 color (Text for modes 2, 3, pixels for mode F)
+   567 342D 8D 17 D0			sta COLPF1 ; = $D017 ; Playfield 1 color - Text color
+   568
+   569 3430 60				rts
+   570
+   571
+   572 				;==============================================================================
+   573 				;															SCREENWAITFRAME  A  
+   574 				;==============================================================================
+   575 				; Subroutine to wait for the current frame to finish display.
+   576 				; At the end we know the electron beam is at the top of the screen, so there
+   577 				; is reasonable assumption that code immediately following this will not be
+   578 				; interrupted by the VBI.
+   579 				;
+   580 				; ScreenWaitFrame  uses A
+   581 				;==============================================================================
+   582
+   583 3431			libScreenWaitFrame
+   584 3431 A5 14			lda RTCLOK60  ; Read the jiffy clock incremented during vertical blank.
+   585
+   586 3433			bLoopWaitFrame
+   587 3433 C5 14			cmp RTCLOK60      ; Is it still the same?
+   588 3435 F0 FC			beq bLoopWaitFrame ; Yes.  Then the frame has not ended.
    589
-   590 343D			bLoopWaitFrame
-   591 343D C5 14			cmp RTCLOK60      ; Is it still the same?
-   592 343F F0 FC			beq bLoopWaitFrame ; Yes.  Then the frame has not ended.
-   593
-   594 3441 60				rts ; No.  Clock changed means frame ended.  exit.
-   595
-   596
-   597 				;===============================================================================
-   598 				; Let the assembler decide where the screen memory resides.
-   599 					
-   600 3442				.align $0400 ; start at 1K boundary, somewhere.
-   601
-   602 3800			TEXTToScroll
-   603 				;;	TEXT 'this was a film from oldskoolcoder (c) jun 2019. '
-   604 				;;	TEXT 'github : https://github.com/oldskoolcoder/ '
-   605 				;;	TEXT 'twitter : @oldskoolcoder email : oldskoolcoder@outlook.com '
-   606 				;;	TEXT 'please support me on patreon @ https://www.patreon.com/'
-   607 				;;	TEXT 'oldskoolcoder thank you ;-)'
-   608 				;;	BYTE 255
-   609
-   610 				; Atari works in screen code values. So .sb instead of .by
-   611 				; Also, realign text to fit better on screen lines...
-   612 3800-3B00> 00 00 34 68 + 	.sb "  This was a film from OldSkoolCoder    " ; line 1
-   613 3828 00 00 00 00 00 00 + 	.sb "           (c) Jun 2019.                " ; line 2
-   614 3850 67 69 74 68 75 62 + 	.sb "github:https://github.com/oldskoolcoder/" ; line 3
-   615 3878 00 00 00 00 00 00 + 	.sb "       twitter:@oldskoolcoder           " ; line 4
-   616 38A0 00 00 00 65 6D 61 + 	.sb "   email:oldskoolcoder@outlook.com      " ; line 5
-   617 38C8 00 00 00 00 00 30 + 	.sb "     Please support me on patreon       " ; line 6
-   618 38F0 00 00 00 00 00 00 + 	.sb "      @ https://www.patreon.com/        " ; line 7
-   619 3918 00 00 00 00 00 6F + 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 8
-   620 3940 21 74 61 72 69 00 + 	.sb "Atari parody by Ken Jennings, Feb 2020. " ; line 9
-   621 3968 67 69 74 68 75 62 + 	.sb "github:https://github.com/kenjennings/At" ; line 10
-   622 3990 61 72 69 0D 2F 33 + 	.sb "ari-OSC036/                  The End...!" ; line 11
-   623
-   624 					; Adding 40 blanks to scroll the text off before restarting,
-   625 					; which also doubles as an empty line for the screen memory.
-   626 39B8			SCREENEMPTY ; 40 blank characters.  Line 2, 14 - 25 on screen.
-   627 39B8 00 00 00 00 00 00 + 	.sb "                                        " ; Line 12, 14 etc.
-   628 39E0 FF				.by 255  ; -1 does work as end of string flag for Atari and C64. (will not be displayed)
-   629
-   630 39E1			SCREENRAM ; This is 48, because ANTIC does more DMA on the scrolling line.
-   631 39E1 80 80 80 80 80 80 + 	:48 .byte $80 ;; .ds [48] ; Top line that scrolls.  ; Line 13
-   632
-   633 3A11			EXPLAINTHIS
-   634 3A11 34 68 65 00 67 72 + 	.sb "The green part of the screen shows when " ; line 15
-   635 3A39 74 68 65 00 23 30 + 	.sb "the CPU is executing the coarse scroll. " ; line 16
-   636 3A61 34 68 65 00 63 72 + 	.sb "The credit text is declared once and    " ; line 17
-   637 3A89 75 73 65 64 00 62 + 	.sb "used both as the static text seen above " ; line 18
-   638 3AB1 61 6E 64 00 61 73 + 	.sb "and as the data for the scrolling text  " ; line 19
-   639 3AD9 6D 65 73 73 61 67 + 	.sb "message.                                " ; Line 20
-   640
-   641
-   642 				;===============================================================================
-   643
-   644 3B01				.align $0100 ; Go to next page boundary to make sure display list 
-   645 					             ; can't cross a 1K boundary.
-   646
-   647 				; Imitate the C64 convention of a full-screen for a display mode.
-   648 				; Sort of.  But not really.   It will only look like a 25-line text
-   649 				; display.   But, screen memory can be whatever we want it to be.
-   650 				; The screen redisplays the scrolling text statically, 
-   651 				; or blank lines.		  
-   652
-   653 3C00			DISPLAYLIST
-   654 3C00-3C30> 70			.by DL_BLANK_8   ; extra 8 blank to center 25 text lines
-   655 3C01 70				.by DL_BLANK_8   ; 8 blank scan lines
-   656 3C02 30				.by DL_BLANK_4   ; 
-   657
-   658 3C03				mDL_LMS DL_TEXT_2, TEXTToScroll ; mode 2 text and init memory scan. Line 1
+   590 3437 60				rts ; No.  Clock changed means frame ended.  exit.
+   591
+   592
+   593 				;===============================================================================
+   594 				; Let the assembler decide where the screen memory resides.
+   595 					
+   596 3438				.align $0400 ; start at 1K boundary, somewhere.
+   597
+   598 3800			TEXTToScroll
+   599 				;;	TEXT 'this was a film from oldskoolcoder (c) jun 2019. '
+   600 				;;	TEXT 'github : https://github.com/oldskoolcoder/ '
+   601 				;;	TEXT 'twitter : @oldskoolcoder email : oldskoolcoder@outlook.com '
+   602 				;;	TEXT 'please support me on patreon @ https://www.patreon.com/'
+   603 				;;	TEXT 'oldskoolcoder thank you ;-)'
+   604 				;;	BYTE 255
+   605
+   606 				; Atari works in screen code values. So .sb instead of .by
+   607 				; Also, realign text to fit better on screen lines...
+   608 3800-3B00> 00 00 34 68 + 	.sb "  This was a film from OldSkoolCoder    " ; line 1
+   609 3828 00 00 00 00 00 00 + 	.sb "           (c) Jun 2019.                " ; line 2
+   610 3850 67 69 74 68 75 62 + 	.sb "github:https://github.com/oldskoolcoder/" ; line 3
+   611 3878 00 00 00 00 00 00 + 	.sb "       twitter:@oldskoolcoder           " ; line 4
+   612 38A0 00 00 00 65 6D 61 + 	.sb "   email:oldskoolcoder@outlook.com      " ; line 5
+   613 38C8 00 00 00 00 00 30 + 	.sb "     Please support me on patreon       " ; line 6
+   614 38F0 00 00 00 00 00 00 + 	.sb "      @ https://www.patreon.com/        " ; line 7
+   615 3918 00 00 00 00 00 6F + 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 8
+   616 3940 21 74 61 72 69 00 + 	.sb "Atari parody by Ken Jennings, Feb 2020. " ; line 9
+   617 3968 67 69 74 68 75 62 + 	.sb "github:https://github.com/kenjennings/At" ; line 10
+   618 3990 61 72 69 0D 2F 33 + 	.sb "ari-OSC036/                  The End...!" ; line 11
+   619
+   620 					; Adding 40 blanks to scroll the text off before restarting,
+   621 					; which also doubles as an empty line for the screen memory.
+   622 39B8			SCREENEMPTY ; 40 blank characters.  Line 2, 14 - 25 on screen.
+   623 39B8 00 00 00 00 00 00 + 	.sb "                                        " ; Line 12, 14 etc.
+   624 39E0 FF				.by 255  ; -1 does work as end of string flag for Atari and C64. (will not be displayed)
+   625
+   626 39E1			SCREENRAM ; This is 48, because ANTIC does more DMA on the scrolling line.
+   627 39E1 80 80 80 80 80 80 + 	:48 .byte $80 ;; .ds [48] ; Top line that scrolls.  ; Line 13
+   628
+   629 3A11			EXPLAINTHIS
+   630 3A11 34 68 65 00 67 72 + 	.sb "The green part of the screen shows when " ; line 15
+   631 3A39 74 68 65 00 23 30 + 	.sb "the CPU is executing the coarse scroll. " ; line 16
+   632 3A61 34 68 65 00 63 72 + 	.sb "The credit text is declared once and    " ; line 17
+   633 3A89 75 73 65 64 00 62 + 	.sb "used both as the static text seen above " ; line 18
+   634 3AB1 61 6E 64 00 61 73 + 	.sb "and as the data for the scrolling text  " ; line 19
+   635 3AD9 6D 65 73 73 61 67 + 	.sb "message.                                " ; Line 20
+   636
+   637
+   638 				;===============================================================================
+   639
+   640 3B01				.align $0100 ; Go to next page boundary to make sure display list 
+   641 					             ; can't cross a 1K boundary.
+   642
+   643 				; Imitate the C64 convention of a full-screen for a display mode.
+   644 				; Sort of.  But not really.   It will only look like a 25-line text
+   645 				; display.   But, screen memory can be whatever we want it to be.
+   646 				; The screen redisplays the scrolling text statically, 
+   647 				; or blank lines.		  
+   648
+   649 3C00			DISPLAYLIST
+   650 3C00-3C30> 70			.by DL_BLANK_8   ; extra 8 blank to center 25 text lines
+   651 3C01 70				.by DL_BLANK_8   ; 8 blank scan lines
+   652 3C02 30				.by DL_BLANK_4   ; 
+   653
+   654 3C03				mDL_LMS DL_TEXT_2, TEXTToScroll ; mode 2 text and init memory scan. Line 1
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3C03 42				.byte DL_TEXT_2|DL_LMS
     12 3C04 00 38			.word TEXTTOSCROLL   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
-   659
-   660 					.rept 10                                                   ; Lines 2 to 11.
-   661 					.BY DL_TEXT_2   
-   662 					.ENDR
-   662 					.endr
+   655
+   656 					.rept 10                                                   ; Lines 2 to 11.
+   657 					.BY DL_TEXT_2   
+   658 					.ENDR
+   658 					.endr
 Source: REPT
-   661 3C06 02				.BY DL_TEXT_2   
-   661 3C07 02				.BY DL_TEXT_2   
-   661 3C08 02				.BY DL_TEXT_2   
-   661 3C09 02				.BY DL_TEXT_2   
-   661 3C0A 02				.BY DL_TEXT_2   
-   661 3C0B 02				.BY DL_TEXT_2   
-   661 3C0C 02				.BY DL_TEXT_2   
-   661 3C0D 02				.BY DL_TEXT_2   
-   661 3C0E 02				.BY DL_TEXT_2   
-   661 3C0F 02				.BY DL_TEXT_2   
+   657 3C06 02				.BY DL_TEXT_2   
+   657 3C07 02				.BY DL_TEXT_2   
+   657 3C08 02				.BY DL_TEXT_2   
+   657 3C09 02				.BY DL_TEXT_2   
+   657 3C0A 02				.BY DL_TEXT_2   
+   657 3C0B 02				.BY DL_TEXT_2   
+   657 3C0C 02				.BY DL_TEXT_2   
+   657 3C0D 02				.BY DL_TEXT_2   
+   657 3C0E 02				.BY DL_TEXT_2   
+   657 3C0F 02				.BY DL_TEXT_2   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
-   663 					
-   664 3C10 82				.by DL_TEXT_2|DL_DLI ; Display SCREENEMPTY and start the DLI ; Line 12
-   665 					
-   666 3C11				mDL_LMS DL_TEXT_2|DL_HSCROLL, SCREENRAM ; mode 2 text and init memory scan. Line 13.
+   659 					
+   660 3C10 82				.by DL_TEXT_2|DL_DLI ; Display SCREENEMPTY and start the DLI ; Line 12
+   661 					
+   662 3C11				mDL_LMS DL_TEXT_2|DL_HSCROLL, SCREENRAM ; mode 2 text and init memory scan. Line 13.
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2|DL_HSCROLL&$0F
     11 3C11 52				.byte DL_TEXT_2|DL_HSCROLL|DL_LMS
     12 3C12 E1 39			.word SCREENRAM   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
-   667 					
-   668 3C14				mDL_LMS DL_TEXT_2, SCREENEMPTY ; mode 2 text and init memory scan. Line 14.
+   663 					
+   664 3C14				mDL_LMS DL_TEXT_2, SCREENEMPTY ; mode 2 text and init memory scan. Line 14.
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3C14 42				.byte DL_TEXT_2|DL_LMS
     12 3C15 B8 39			.word SCREENEMPTY   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
-   669
-   670 3C17				mDL_LMS DL_TEXT_2, EXPLAINTHIS ; mode 2 text and init memory scan. Line 15
+   665
+   666 3C17				mDL_LMS DL_TEXT_2, EXPLAINTHIS ; mode 2 text and init memory scan. Line 15
 Macro: MDL_LMS [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/ANTIC.asm]
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3C17 42				.byte DL_TEXT_2|DL_LMS
     12 3C18 11 3A			.word EXPLAINTHIS   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
-   671 						
-   672 					.rept 5                                                   ; Lines 16 to 20.
-   673 					.BY DL_TEXT_2   
+   667 						
+   668 					.rept 5                                                   ; Lines 16 to 20.
+   669 					.BY DL_TEXT_2   
+   670 					.ENDR
+   670 					.endr
+Source: REPT
+   669 3C1A 02				.BY DL_TEXT_2   
+   669 3C1B 02				.BY DL_TEXT_2   
+   669 3C1C 02				.BY DL_TEXT_2   
+   669 3C1D 02				.BY DL_TEXT_2   
+   669 3C1E 02				.BY DL_TEXT_2   
+Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
+   671 					
+   672 					.rept 5            ; keep displaying the same empty line for Lines 21 - 25
+   673 					MDL_LMS DL_TEXT_2, SCREENEMPTY 
    674 					.ENDR
    674 					.endr
 Source: REPT
-   673 3C1A 02				.BY DL_TEXT_2   
-   673 3C1B 02				.BY DL_TEXT_2   
-   673 3C1C 02				.BY DL_TEXT_2   
-   673 3C1D 02				.BY DL_TEXT_2   
-   673 3C1E 02				.BY DL_TEXT_2   
-Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
-   675 					
-   676 					.rept 5            ; keep displaying the same empty line for Lines 21 - 25
-   677 					MDL_LMS DL_TEXT_2, SCREENEMPTY 
-   678 					.ENDR
-   678 					.endr
-Source: REPT
-   677 3C1F				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   673 3C1F				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3C1F 42				.byte DL_TEXT_2|DL_LMS
     12 3C20 B8 39			.word SCREENEMPTY   
-   677 3C22				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   673 3C22				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3C22 42				.byte DL_TEXT_2|DL_LMS
     12 3C23 B8 39			.word SCREENEMPTY   
-   677 3C25				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   673 3C25				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3C25 42				.byte DL_TEXT_2|DL_LMS
     12 3C26 B8 39			.word SCREENEMPTY   
-   677 3C28				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   673 3C28				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3C28 42				.byte DL_TEXT_2|DL_LMS
     12 3C29 B8 39			.word SCREENEMPTY   
-   677 3C2B				MDL_LMS DL_TEXT_2, SCREENEMPTY 
+   673 3C2B				MDL_LMS DL_TEXT_2, SCREENEMPTY 
      5 = 0002				MDL_TEMP=DL_TEXT_2&$0F
     11 3C2B 42				.byte DL_TEXT_2|DL_LMS
     12 3C2C B8 39			.word SCREENEMPTY   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
-   679 					
-   680 3C2E				mDL_JVB DISPLAYLIST ; End.  Wait for Vertical Blank.  Restart the Display List
+   675 					
+   676 3C2E				mDL_JVB DISPLAYLIST ; End.  Wait for Vertical Blank.  Restart the Display List
 Macro: MDL_JVB [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/ANTIC.asm]
      6 3C2E 41				.byte DL_JUMP_VB
      7 3C2F 00 3C			.word DISPLAYLIST   
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
-   681
-   682
-   683 				;===============================================================================
-   684 				; Store the program start location in the Atari DOS RUN Address.
-   685 				; When DOS is done loading the executable file into memory it will 
-   686 				; automatically jump to the address placed here in DOS_RUN_ADDR.
-   687
-   688 				; DOS_RUN_ADDR =  $02e0 ; Execute at address stored here when file loading completes.
-   689
-   690 3C31				mDiskDPoke DOS_RUN_ADDR, INITIALIZATION
+   677
+   678
+   679 				;===============================================================================
+   680 				; Store the program start location in the Atari DOS RUN Address.
+   681 				; When DOS is done loading the executable file into memory it will 
+   682 				; automatically jump to the address placed here in DOS_RUN_ADDR.
+   683
+   684 				; DOS_RUN_ADDR =  $02e0 ; Execute at address stored here when file loading completes.
+   685
+   686 3C31				mDiskDPoke DOS_RUN_ADDR, INITIALIZATION
 Macro: MDISKDPOKE [Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/macros.asm]
      4 = 3C31					DISKDPOKE_TEMP =*
      5 3C31					ORG DOS_RUN_ADDR
      6 02E0-02E1> 08 33				.word INITIALIZATION
      7 02E2					ORG DISKDPOKE_TEMP
 Source: /home/kenjen/eclipse-workspace/Atari-OSC-36/EP05/InterruptTextScroller.5.asm
-   691
-   692 				; --------------------------------------------------------------------
-   693 					END ; finito
+   687
+   688 				; --------------------------------------------------------------------
+   689 					END ; finito

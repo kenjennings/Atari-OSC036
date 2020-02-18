@@ -20,7 +20,7 @@
 ; BASIC would call via USR(). This as Version 4 is a regular, auto-running
 ; machine language program run without BASIC.
 ;
-; Original C64 code that is unused or modified is commented out with two semicolons ;;
+; Cleaned up version with C64 and other unnecessary code and comments removed. 
 ;
 ; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode5/InterruptTextScroller.4.asm
 ;
@@ -136,6 +136,9 @@ INITIALIZATION
 	lda #[COLOR_PURPLE_BLUE|$C] ; Set a non-black border color, so the
 	sta COLOR4                  ; DLI will look like it does something.
 
+	lda #0
+	sta COLOR1                  ; Set text brightness to darkest/0.
+	
 ; 1) Turn off Display List Interrupts
 
 	lda #NMI_VBI  ; Turn Off DLIs
@@ -169,17 +172,6 @@ INITIALIZATION
 	lda #>TEXTToScroll
 	sta TextLoader + 2
 
-; Copying the color table into screen ram...  I guess to let the user play with 
-; it on the screen.  But, this doesn't seem to be actually necessary.
-;;	ldx #$00
-;;@ScreenLoad
-;;	lda VideoRamColour,x
-;;	sta $0400,x
-;;	inx
-;;	cpx #$40
-;;	bne @ScreenLoad
-
-
 ; Atari machine language run from DOS can't exit or this will 
 ; return to DOS and reset the screen.   So, loop. Forever.
 
@@ -195,6 +187,8 @@ TEXT_FRAME_COUNTER
 SCROLX       ; Current X scroll value.
 	.byte $04
 
+COLORRAMP    ; Text background color ramp. 0 to 63.
+	.byte 0 
 
 VideoRamColour
 ;;	TEXT '  bbhhhjjjqqqjjjhhhbb  eeeccmmmqqqmmmccee  ffkknnnqqqnnnkkff       '
@@ -202,10 +196,22 @@ VideoRamColour
 ; The byte sequence is N number of copies of the same color.
 ; sequence (ish): 0 1 2 3 4 3 2 1 0   5 6 7 4 7 6 5   0 8 9 10 4 10 9 8 0    
 ; copies:         2 2 3 3 3 3 2 2 2   3 2 3 3 3 2 2   2 2 2 3  3  3 2 2 7
-; Thought it was like a sine wave, but it is not. 
+; Thought it was like a sine wave, but its not. 
 ; So, the idea appears to be three color gradients.  
 ; 22 lines, 18 lines, 22 lines, plus 7 more in the original starting color.
-  
+; So...  Whatever.  Make a color pattern for the Atari.
+; Background and foreground for text is a different thing on the 
+; Atari.  The background is a color, and the text can be a shade of the 
+; same color.  For the case of Atari we'll just make a sine-ish ramp of the 
+; background in red, green, and blue and allow that to wrap around/repeat 
+; based on brightness ramp like this:
+; 0 0 2 2 4 6 8 10 12 12 14 14 12 12 10 8 6 4 2 2 0 0  
+; 0 to 65.  return to 0 at 66.
+	.by $30,$32,$32,$34,$36,$38,$3A,$3C,$3C,$3E,$3E,$3C,$3C,$3A,$38,$36,$34,$32,$32,$30,$30  ; Red 0 - 20
+	.by $c0,$c2,$c2,$c4,$c6,$c8,$cA,$cC,$cC,$cE,$cE,$cC,$cC,$cA,$c8,$c6,$c4,$c2,$c2,$c0,$c0  ; Green 21 - 41
+	.by $70,$72,$72,$74,$76,$78,$7A,$7C,$7C,$7E,$7E,$7C,$7C,$7A,$78,$76,$74,$72,$72,$70,$70  ; Blue  42 - 62
+	.by $30,$32,$32,$34,$36,$38,$3A,$3C                 ; Overlap back to red.                63...                    
+
 
 ;===============================================================================
 
@@ -216,9 +222,7 @@ INTERRUPT
 ;==============================================================================
 ; Simulate what the C64 interrupt appears to be doing.
 ; Set fine scroll.
-; Set border to color.   In this case, use the OS frame counter instead of 
-; pulling a character value from the screen.
-; Reset to the original color at the end. 
+; Set each scan line of text a different color from the table.
 ; The ANTIC chip isolates scrolling to specific lines on the 
 ; Display List. The act of setting scroll values and coarse scrolling is 
 ; done before the scan line reaches the scrolling area, or after the 
@@ -230,22 +234,33 @@ INTERRUPT
 	pha            ; Save the regs we're going to use.
 	txa
 	pha
+	tya
+	pha
 
-	ldx #8         ; For the scan line loop later.
+	ldx #7         ; For the scan line loop later.
+	ldy COLORRAMP
 	lda SCROLX     ; On the Atari this must be set BEFORE displaying the scrolling line.
 	sta HSCROL
 	
-	lda RTCLOK60   ; Get a new color for border.
-	sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 0
-	sta COLBK      ; = $D01A ; Border color in mode 2
-	lda COLOR4     ; Get original OS shadow for the border later
+	lda VideoRamColour,y   ; Get a new color for text background.
+	sta COLPF2     ; = $D018 ; Text Background color in mode 2
 
 b_DLILoop
+	iny
+	lda VideoRamColour,y   ; Get a new color for text background.
 	sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 7,6,5...0
+	sta COLPF2     ; = $D018 ; Text Background color in mode 2
 	dex
 	bne b_DLILoop
-
-	sta COLBK      ; = $D01A ; Restore Border color in mode 2
+	
+	; DLI is done.   Clean up afterwards.  
+	; Prep next scroll and complete coarse scroll if needed.
+	
+;	lda COLOR4     ; Get original OS shadow for the border 
+;	sta COLBK      ; = $D01A ; Restore Border color in mode 2
+	lda COLOR2     ; Get original OS shadow for the text background 
+	sta WSYNC
+	sta COLPF2     ; = $D018 ; Text Background color in mode 2
 
 	; On the Atari the Frame Counter != scroll value.
 
@@ -261,75 +276,61 @@ b_DLILoop
 	sta TEXT_FRAME_COUNTER
 	bne b_DLI_BypassScroller ; Skip coarse scroll when counter is not 0.
 
+	inc COLORRAMP ; Increment color ramp every other frame.
+	lda COLORRAMP
+	and #63       ; The loop back to 0 occurs at magic number 64
+	sta COLORRAMP
+
 	dec SCROLX               ; Scroll 4, 3, 2, 1, at 0 then restart at 4
 	bne b_DLI_BypassScroller ; Did not reach 0.
-
+	
 	lda #4              ; reset to show 4 color clocks from buffer.
 	sta SCROLX
-
-	jst TestOn          ; Turn on green colors to identify coarse scrolling and color table time.
+	
+	jsr TestOn          ; Turn on green colors to identify coarse scrolling and color table time.
 	jsr TextLooper      ; Coarse scroll.
 
-b_DLI_BypassScroller
-	jst TestOn          ; Turn on green colors to identify coarse scrolling and color table time.
-	jsr RotateColors    ; Move the color table.
+b_DLI_BypassScroller	
 
 	jsr TestOff         ; turn off the green colors.
-
+	
 	pla                 ; Restore the regs used.
+	tay
+	pla
 	tax
 	pla
 	rti
 
 
 ;===============================================================================
-
-RotateColours
-	ldx #$00
-@Loop
-	lda $0401,x
-	sta $0400,x
-	inx
-	cpx #NoOfColours
-	bne @Loop
-	lda $0400
-	sta $03FF + NoOfColours
-
-	rts
-
-
-;===============================================================================
+; Coarse scroll the line of text.
 
 TextLooper
-    ldx #0
+	ldx #0
 
 TextMover
-    lda SCREENROW+1,x
-    sta SCREENROW,x
-    inx
-    cpx #39
-    bne TextMover
+	lda SCREENROW+1,x ; Shift screen row 
+	sta SCREENROW,x
+	inx
+	cpx #39
+	bne TextMover
 
 TextLoader
-    lda TEXTToScroll
-    cmp #255
-    beq EndOfText
-    sta SCREENROW+39
-    clc
-    lda TextLoader + 1
-    adc #1
-    sta TextLoader + 1
-    lda TextLoader + 2
-    adc #0
-    sta TextLoader + 2
+	lda TEXTToScroll
+	bmi b_EndOfText ; -1 is end of text sentinel character.
+	sta SCREENROW+39
 
-    rts
+	inc TextLoader + 1    ; Increment the address pointing to the 
+	bne b_TL_SkipHiByte ; input buffer of text to scroll.
+	inc TextLoader + 2
+b_TL_SkipHiByte
+	rts
 
-EndOfText
-    lda #<TEXTToScroll
-    sta TextLoader + 1
-    lda #>TEXTToScroll
-    sta TextLoader + 2
+b_EndOfText              ; Reset the scroll to the start.
+	lda #<TEXTToScroll
+	sta TextLoader + 1
+	lda #>TEXTToScroll
+	sta TextLoader + 2
 
     rts
 
@@ -487,4 +488,3 @@ DISPLAYLIST
 
 ; --------------------------------------------------------------------
 	END ; finito
-

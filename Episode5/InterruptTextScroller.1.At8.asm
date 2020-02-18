@@ -25,6 +25,8 @@
 ; 
 ; The other demos after this will be written to autorun from DOS.
 ;
+; Cleaned up version with C64 and other unnecessary code and comments removed.
+;
 ; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode5/InterruptTextScroller.1.asm
 ;
 ; Originally from:

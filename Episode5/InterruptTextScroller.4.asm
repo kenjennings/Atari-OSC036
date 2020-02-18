@@ -354,9 +354,7 @@ INTERRUPT
 ;==============================================================================
 ; Simulate what the C64 interrupt appears to be doing.
 ; Set fine scroll.
-; Set border to color.   In this case, use the OS frame counter instead of 
-; pulling a character value from the screen.
-; Reset to the original color at the end. 
+; Set each scan line of text a different color from the table.
 ; The ANTIC chip isolates scrolling to specific lines on the 
 ; Display List. The act of setting scroll values and coarse scrolling is 
 ; done before the scan line reaches the scrolling area, or after the 
@@ -376,9 +374,6 @@ INTERRUPT
 	lda SCROLX     ; On the Atari this must be set BEFORE displaying the scrolling line.
 	sta HSCROL
 	
-;	lda RTCLOK60   ; Get the system frame counter use for border color.
-;;	sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 0
-;	sta COLBK      ; = $D01A ; Border color in mode 2
 	lda VideoRamColour,y   ; Get a new color for text background.
 	sta COLPF2     ; = $D018 ; Text Background color in mode 2
 
@@ -393,10 +388,10 @@ b_DLILoop
 	; DLI is done.   Clean up afterwards.  
 	; Prep next scroll and complete coarse scroll if needed.
 	
-	lda COLOR4     ; Get original OS shadow for the border 
-	sta WSYNC
-	sta COLBK      ; = $D01A ; Restore Border color in mode 2
+;	lda COLOR4     ; Get original OS shadow for the border 
+;	sta COLBK      ; = $D01A ; Restore Border color in mode 2
 	lda COLOR2     ; Get original OS shadow for the text background 
+	sta WSYNC
 	sta COLPF2     ; = $D018 ; Text Background color in mode 2
 
 	; On the Atari the Frame Counter != scroll value.
@@ -417,12 +412,9 @@ b_DLILoop
 
 	inc COLORRAMP ; Increment color ramp every other frame.
 	lda COLORRAMP
-	cmp #63       ; Reached the end of the table.
-	bne bSkipResetColorRamp
-	lda #0
+	and #63       ; The loop back to 0 occurs at magic number 64
 	sta COLORRAMP
-	
-bSkipResetColorRamp	
+
 	dec SCROLX               ; Scroll 4, 3, 2, 1, at 0 then restart at 4
 	bne b_DLI_BypassScroller ; Did not reach 0.
 	

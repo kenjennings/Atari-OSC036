@@ -19,7 +19,7 @@
 ; BASIC would call via USR(). This as Version 3 is a regular, auto-running
 ; machine language program run without BASIC.
 ;
-; Original C64 code that is unused or modified is commented out with two semicolons ;;
+; Cleaned up version with C64 and other unnecessary code and comments removed. 
 ;
 ; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode5/InterruptTextScroller.3.asm
 ;
@@ -240,7 +240,7 @@ b_DLILoop
 	lda #4              ; reset to show 4 color clocks from buffer.
 	sta SCROLX
 
-	jst TestOn          ; Turn on green colors to identify coarse scrolling time.
+	jsr TestOn          ; Turn on green colors to identify coarse scrolling time.
 	jsr TextLooper      ; Coarse scroll.
 	jsr TestOff         ; turn off the green colors.
 b_DLI_BypassScroller
@@ -277,7 +277,7 @@ b_TL_SkipHiByte
 	rts
 
 
-EndOfText              ; Reset the scroll to the start.
+b_EndOfText              ; Reset the scroll to the start.
 	lda #<TEXTToScroll
 	sta TextLoader + 1
 	lda #>TEXTToScroll

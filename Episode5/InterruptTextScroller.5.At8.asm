@@ -4,27 +4,31 @@
 ;
 ; Atari port of C64 program.  On the C64 this is a raster interrupt to start 
 ; horizontal scrolling and change the border color based on the text character 
-; at the upper left corner of the screen, then it waits until the last scan 
-; line of the text line, and turns scrolling off and returns the border 
-; color to normal.  The text is not actually fine scrolled.  It is only 
-; coarse scrolled through the text line.
+; at the upper left corner of the screen.  It changes the text color 
+; based on a lookup table.  On the last scan line it turns off scrolling 
+; and returns the color registers to normal.  The text characters are displayed
+; in inverse video, so the bright visible color appears in the text. 
 ;
 ; The Atari version generates its own custom screen to imitate the 
 ; appearance of the C64.  It does the border color change based on 
-; the value of the OS jiffy clock.  Fine scrolling does not happen here,
-; though values are precisely set to make sure text display is correct.
-; The program only coarse scrolls the text line.
+; the value of the OS jiffy clock.  Fine scrolling occurs here, but only 
+; for one character, then coarse scrolling is done as the C64 does by 
+; rewriting screen memory, not the way the Atari usually would do it by 
+; updating Display List LMS addresses.  The text color changes by converting 
+; each character to inverse video, and using zero luminance for the text color 
+; allowing the inverted pixels to be dark, and the background color to 
+; show through. 
 ;
 ; Version 1 was built as a machine language routine loaded by DOS which 
-; BASIC would call via USR(). This as Version 2 is a regular, auto-running
+; BASIC would call via USR(). This as Version 5 is a regular, auto-running
 ; machine language program run without BASIC.
 ;
-; Cleaned up version with C64 and other unnecessary code and comments removed.
+; Cleaned up version with C64 and other unnecessary code and comments removed. 
 ;
-; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode5/InterruptTextScroller.2.asm
+; https://github.com/kenjennings/Atari-OSC036/blob/master/Episode5/InterruptTextScroller.5.asm
 ;
 ; Originally from:
-; https://github.com/OldSkoolCoder/TEXTScrollers/blob/master/InterruptTextScroller.2.asm
+; https://github.com/OldSkoolCoder/TEXTScrollers/blob/master/InterruptTextScroller.5.asm
 ;
 ;===============================================================================
 
@@ -47,20 +51,32 @@
 
 	icl "macros.asm"
 
-	
+
 ;===============================================================================
 ; LOMEM_DOS_DUP = $3308 ; First usable memory after DOS and DUP 
 
-	ORG LOMEM_DOS_DUP ; Overdoing the niceness.  Start "program" after DOS and DUP 
+	ORG LOMEM_DOS_DUP ; Overdoing the niceness. Start "program" after DOS and DUP 
 
 
-; This program sets a fine scroll value, but it doesn't move from that 
-; position.  On the C64, the scroll value must be set in the register when the 
-; scan line reaches the place on the screen where scrolling occurs.
-; On the Atari once the HSCROL value is set it applies globally to all lines 
-; in the Display List that have the horizontal scrolling option set.  
+; This program fine scrolls the text, but it does it like the C64 where it 
+; fine scrolls one character position, and then executes coarse scrolling 
+; by rewriting the screen memory.  On the C64, the scroll value must be set in 
+; the register when the scan line reaches the place on the screen where 
+; scrolling occurs.  On the Atari once the HSCROL value is set it applies 
+; globally to all lines in the Display List that have the horizontal 
+; scrolling option set.  
 ;
-; Let's explain the Atari scroll value and why we're using HSCROL = 12:
+; In version 2 the text was only coarse scrolled using a static fine scroll 
+; position, so I just used the fixed HSCROLL value 12 which allows a full 
+; character at the start of the line and displays 3 characters from the 
+; color clock buffer.
+
+; In version 4 and 5 here the code fine scrolls one character before coarse
+; scrolling.  However, the Atari hardware can fine scroll across four 
+; characters before needing to coarse scroll. 
+;
+; Let's explain the Atari scroll value and what I've chosen to use for 
+; fine scrolling...
 ; Where the C64 has a one character buffer, the Atari has a 4 character buffer
 ; storing the color clocks for four, Mode 2 characters.  Each Mode 2 character
 ; is four color clocks wide, so this is a total of 16 color clocks.  OR:
@@ -89,33 +105,44 @@
 ; Thus only the HSCROL values 0, 4, 8, 12 will result in a display that begins 
 ; at a full character.
 ;  
-; Therefore, this program uses HSCROL value 12 to display three characters 
-; from the buffer, ignoring the first character.  This ignored character is why 
-; the SCREENROW coarse scrolling address is declared below as the value of the 
-; "displayed" SCREENRAM location (where the scrolling buffer will be) plus 1 
-; character offset.
+; To emulate the C64 behavior I decided to use only the last character in the 
+; four-character buffer which allows moving the horizontal scroll through 
+; values 4, 3, 2, 1, and then 0 becomes the trigger (BEQ) to engage coarse 
+; scrolling and reset the fine scroll back to 4.
+;
+; Therefore, the program ignores the first three characters in the buffer 
+; using only the last one.  The three ignored characters is why the SCREENROW
+; coarse scrolling address is declared below as the value of the "displayed" 
+; SCREENRAM location (where the scrolling buffer will be) plus 3 characters 
+; offset.
 
-SCREENROW = SCREENRAM+1  ;    C64 = 1824 ; (20 rows down)
+SCREENROW = SCREENRAM+3  ;    C64 = 1824 ; (20 rows down)
+
+RasterTop       = $D0
+RasterBottom    = $DB
+NoOfRasterLines = $06
+NoOfColours     = $40
 
 
 ;===============================================================================
 
-  
 INITIALIZATION
+
 ; Atari screen and interrupt setup...
-; 0) Set default border color and constant scroll value.
+; 0) Set default border color.
 ; 1) Turn off Display List Interrupts
 ; 2) Set Display List Interrupt Vector.
 ; 3) Set Display List. 
 ; 4) Enable Display List Interrupts.
 
-; 0) Set default border color and constant scroll value.
+
+; 0) Set default border color.
 
 	lda #[COLOR_PURPLE_BLUE|$C] ; Set a non-black border color, so the
 	sta COLOR4                  ; DLI will look like it does something.
 
-	lda #12                     ; No change in scrolling here, so just set
-	sta HSCROL                  ; this once to show a full char at the second position. 
+	lda #0
+	sta COLOR1                  ; Set text brightness to darkest/zero.
 
 ; 1) Turn off Display List Interrupts
 
@@ -149,6 +176,7 @@ INITIALIZATION
 	sta TextLoader + 1
 	lda #>TEXTToScroll
 	sta TextLoader + 2
+	
 
 ; Atari machine language run from DOS can't exit or this will 
 ; return to DOS and reset the screen.   So, loop. Forever.
@@ -162,6 +190,24 @@ Do_While_More_Electricity
 TEXT_FRAME_COUNTER
 	.byte $00
 
+SCROLX       ; Current X scroll value.
+	.byte $04
+
+COLORRAMP    ; Text background color ramp. 0 to 65.
+	.byte 0 
+
+VideoRamColour
+; Second go-around for inverse video text.   
+; 16 steps for brightness.
+; 8 * 2 steps for color.
+; Then shift and offset colors by half.
+; resulting in Candy Rainbows.....
+	.by $06,$06,$16,$18,$28,$2a,$3c,$3e,$4e,$4c,$5a,$58,$68,$66,$76,$76 ; 0 to 15
+	.by $86,$86,$96,$98,$a8,$aa,$bc,$be,$ce,$cc,$da,$d8,$e8,$e6,$f6,$f6 ; 16 to 31
+	.by $46,$46,$56,$58,$68,$6a,$7c,$7e,$8e,$8c,$9a,$98,$a8,$a6,$b6,$b6 ; 32 to 47
+	.by $c6,$c6,$d6,$d8,$e8,$ea,$fc,$fe,$0e,$0c,$1a,$18,$28,$26,$36,$36 ; 48 to 63
+	.by $06,$06,$16,$18,$28,$2a,$3c                                     ; 64 to 70
+
 
 ;===============================================================================
 
@@ -171,50 +217,84 @@ INTERRUPT
 ;															DLI  
 ;==============================================================================
 ; Simulate what the C64 interrupt appears to be doing.
-; Set border to color.   In this case, use the OS frame counter instead of 
-; pulling a character value from the screen.
-; Reset to the original color at the end. 
+; Set fine scroll.
+; Set each scan line of text a different color from the table.
 ; The ANTIC chip isolates scrolling to specific lines on the 
 ; Display List. The act of setting scroll values and coarse scrolling is 
 ; done before the scan line reaches the scrolling area, or after the 
 ; scrolling region has been displayed.
 ; Here we're trying to do this the C64 way including coarse scrolling 
-; text bytes through screen memory at the end of the interrupt
+; text bytes through screen memory at the end of the interrupt.
 ;==============================================================================
 
 	pha            ; Save the regs we're going to use.
 	txa
 	pha
+	tya
+	pha
+	
+	ldx #7         ; For the scan line loop later.
+	ldy COLORRAMP
+	lda SCROLX     ; On the Atari this must be set BEFORE displaying the scrolling line.
+	sta HSCROL
+	
+	lda VideoRamColour,y   ; Get a new color for text background.
+	sta COLPF2     ; = $D018 ; Text Background color in mode 2
 
-	lda RTCLOK60   ; Get a new color for border.
-	sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 0
-	sta COLBK      ; = $D01A ; Border color in mode 2
-	lda COLOR4     ; Get original OS shadow for the border later
-
-	ldx #8
 b_DLILoop
+	iny
+	lda VideoRamColour,y   ; Get a new color for text background.
 	sta WSYNC      ; = $D40A ; Wait for Horizontal Sync to start scan line 7,6,5...0
+	sta COLPF2     ; = $D018 ; Text Background color in mode 2
 	dex
 	bne b_DLILoop
 
-	sta COLBK      ; = $D01A ; Restore Border color in mode 2
+	; DLI is done.   Clean up afterwards.  
+	; Prep next scroll and complete coarse scroll if needed.
 
-	inc TEXT_FRAME_COUNTER   ; increment frame counter
-	lda TEXT_FRAME_COUNTER 
-	and #7                   ; Mask down to value 0 to 7.
-	sta TEXT_FRAME_COUNTER   ; Save.   
+;	lda COLOR4     ; Get original OS shadow for the border 
+;	sta COLBK      ; = $D01A ; Restore Border color in mode 2
+	lda COLOR2     ; Get original OS shadow for the text background 
+	sta WSYNC
+	sta COLPF2     ; = $D018 ; Text Background color in mode 2
+
+	; On the Atari the Frame Counter != scroll value.
+
+; The Atari scrolls by color clocks for color consistency.
+; This means scrolling is done half as often.  ALSO, the 
+; Atari buffers 16 color clocks, or 4 characters, not just one,
+; so this will need some tweaking to behave more like the C64.
+
+	; On the Atari fine scrolling is every other frame to go at the same speed as the C64.
+	
+ 	lda TEXT_FRAME_COUNTER
+	eor #1
+	sta TEXT_FRAME_COUNTER
 	bne b_DLI_BypassScroller ; Skip coarse scroll when counter is not 0.
 
-	jsr TestOn               ; Turn on green colors to identify coarse scrolling time.
-	jsr TextLooper           ; Coarse scroll when frame counter reaches zero.
-	jsr TestOff              ; turn off the green colors.
+	inc COLORRAMP ; Increment color ramp every other frame.
+	lda COLORRAMP
+	and #63       ; The loop back to 0 occurs at magic number 64
+	sta COLORRAMP
+	
+	dec SCROLX               ; Scroll 4, 3, 2, 1, at 0 then restart at 4
+	bne b_DLI_BypassScroller ; Did not reach 0.
+	
+	lda #4              ; reset to show 4 color clocks from buffer.
+	sta SCROLX
+	
+	jsr TestOn          ; Turn on green colors to identify coarse scrolling and color table time.
+	jsr TextLooper      ; Coarse scroll.
 
 b_DLI_BypassScroller
-
-	pla            ; Restore the regs used.
+	
+	jsr TestOff         ; turn off the green colors.
+	
+	pla                 ; Restore the regs used.
+	tay
+	pla
 	tax
 	pla
-
 	rti
 
 
@@ -233,23 +313,23 @@ TextMover
 
 TextLoader
 	lda TEXTToScroll
-	bmi b_EndOfText   ; End of text flag is -1
-	sta SCREENROW+39
+	bmi b_EndOfText   ; end of text sentinel is the only negative value.
+    ora #128          ; Add 128... Make inverse video? On the C64 and the Atari.
+    sta SCREENROW+39
 
 	inc TextLoader + 1    ; Increment the address pointing to the 
 	bne b_TL_SkipHiByte ; input buffer of text to scroll.
 	inc TextLoader + 2
 b_TL_SkipHiByte
-
 	rts
 
-b_EndOfText            ; Reset the scroll to the start.
+b_EndOfText              ; Reset the scroll to the start.
 	lda #<TEXTToScroll
 	sta TextLoader + 1
 	lda #>TEXTToScroll
 	sta TextLoader + 2
 
-	rts
+    rts
 
 
 ;==============================================================================
@@ -273,7 +353,7 @@ TestOn
 
 	rts
 
-
+	
 ;==============================================================================
 ;														           TESTOFF  A  
 ;==============================================================================
@@ -331,7 +411,7 @@ TEXTToScroll
 	.sb "     Please support me on patreon       " ; line 6
 	.sb "      @ https://www.patreon.com/        " ; line 7
 	.sb "     oldskoolcoder, Thank you ;-)       " ; line 8
-	.sb "Atari parody by Ken Jennings, Jan 2020. " ; line 9
+	.sb "Atari parody by Ken Jennings, Feb 2020. " ; line 9
 	.sb "github:https://github.com/kenjennings/At" ; line 10
 	.sb "ari-OSC036/                  The End...!" ; line 11
 
@@ -342,7 +422,7 @@ SCREENEMPTY ; 40 blank characters.  Line 2, 14 - 25 on screen.
 	.by 255  ; -1 does work as end of string flag for Atari and C64. (will not be displayed)
 
 SCREENRAM ; This is 48, because ANTIC does more DMA on the scrolling line.
-	.ds [48] ; Top line that scrolls.  ; Line 13
+	:48 .byte $80 ;; .ds [48] ; Top line that scrolls.  ; Line 13
 
 EXPLAINTHIS
 	.sb "The green part of the screen shows when " ; line 15
@@ -354,6 +434,7 @@ EXPLAINTHIS
 
 
 ;===============================================================================
+
 	.align $0100 ; Go to next page boundary to make sure display list 
 	             ; can't cross a 1K boundary.
 
@@ -373,23 +454,23 @@ DISPLAYLIST
 	.rept 10                                                   ; Lines 2 to 11.
 	.by DL_TEXT_2   ;  11 more lines displaying from TEXTTTOSCROLL automatically. 
 	.endr
-
+	
 	.by DL_TEXT_2|DL_DLI ; Display SCREENEMPTY and start the DLI ; Line 12
-
+	
 	mDL_LMS DL_TEXT_2|DL_HSCROLL, SCREENRAM ; mode 2 text and init memory scan. Line 13.
-
+	
 	mDL_LMS DL_TEXT_2, SCREENEMPTY ; mode 2 text and init memory scan. Line 14.
 
 	mDL_LMS DL_TEXT_2, EXPLAINTHIS ; mode 2 text and init memory scan. Line 15
-
+		
 	.rept 5                                                   ; Lines 16 to 20.
 	.by DL_TEXT_2   ;  5 more lines displaying from EXPLAINTHIS automatically. 
 	.endr
-
+	
 	.rept 5            ; keep displaying the same empty line for Lines 21 - 25
 	mDL_LMS DL_TEXT_2, SCREENEMPTY ; mode 2 text and init memory scan
 	.endr
-
+	
 	mDL_JVB DISPLAYLIST ; End.  Wait for Vertical Blank.  Restart the Display List
 
 
@@ -404,4 +485,3 @@ DISPLAYLIST
 
 ; --------------------------------------------------------------------
 	END ; finito
-

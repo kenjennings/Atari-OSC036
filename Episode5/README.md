@@ -1,5 +1,5 @@
 # Atari-OSC036 Episode 5
-Atari port of OldSkoolCoders C64 Tutorial 36, Episode 5 -  ***WORK IN PROGRESS***
+Atari port of OldSkoolCoders C64 Tutorial 36, Episode 5
 
 ---
 
@@ -91,7 +91,7 @@ This effect could also be done on the Atari during the Display List Interrupt by
 
 ***InterruptTextScroller***
 
-[![Atari Version Episode 5 Final](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab.png "Atari Version Episode 5 Final")](#features1)
+[![Atari Version Episode 5 Final](https://github.com/kenjennings/Atari-OSC036/raw/master/Episode5/AtariScreenGrab5.png "Atari Version Episode 5 Final")](#features1)
 
 This is performing the same effect as the Version 5 demonstration with the visible diagnostic information removed and the background and border colors set to black.   Since the static display is no longer visible, the program removes the excess spacing used to align the text for static display on the 40 column screen.
 

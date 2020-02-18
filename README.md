@@ -13,6 +13,6 @@ OldSkoolCoder's Github:  https://github.com/OldSkoolCoder/TEXTScrollers
 
 [**Episode 4**](https://github.com/kenjennings/Atari-OSC036/tree/master/Episode4 "**Episode 4**") - Assembly program that implements fine scrolling by shifting bitmapped images through a character set for the VIC-20.  This is fundamentally the same as the C64 version, but the VIC-20 has a smaller screen geometry.
 
-[**Episode 5**](https://github.com/kenjennings/Atari-OSC036/tree/master/Episode5 "**Episode 5**") - Assembly program that implements fine scrolling using the video hardware's fine scrolling feature. ***WIP***
+[**Episode 5**](https://github.com/kenjennings/Atari-OSC036/tree/master/Episode5 "**Episode 5**") - Assembly program that implements fine scrolling using the video hardware's fine scrolling feature.
 
 ---
